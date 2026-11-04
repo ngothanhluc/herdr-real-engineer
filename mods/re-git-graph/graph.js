@@ -2,14 +2,17 @@
 // commit) for the focused pane's repository, or `props.folder` when opened as
 // a pane. Labels take double-clicks (checkout) and right-clicks (menus).
 import { div, svg, PathBuilder } from "gpui-kit";
-import { v_flex, h_flex, Scrollbar, v_virtual_list } from "gpui-base";
-import { spaces, panes, focused, exec, watchFolder, readTextFile, theme, settings, props, shared, setShared, openOverlay, home, notify, knownAgents, updates } from "herdr";
+import { v_flex, h_flex, Scrollbar, v_virtual_list, VirtualListScrollHandle } from "gpui-base";
+import { spaces, panes, focused, exec, watchFolder, readTextFile, theme, settings, props, shared, setShared, openOverlay, home, notify, knownAgents, updates, nextCommand } from "herdr";
 import { layoutLanes } from "./lanes.js";
-import { READ, STATUS, UNCOMMITTED, LABEL, logArgs, parseLog, parseStatus, withUncommitted, labelsOf, hitLabel,
+import { READ, STATUS, UNCOMMITTED, LABEL, parseLog, parseStatus, withUncommitted, labelsOf, hitLabel,
   menuFor, menuHeight, fileArgs, joinFiles, diffArgs, diffRows } from "./git.js";
 import { perform, openDialog, showChanges } from "./act.js";
 import { icon } from "./menu.js";
 import { available, check, openUpdate, newer } from "./update.js";
+import { ALL, FIND_MAX, filterLogArgs, normalizeFilter, sameFilter, filterLabel } from "./query.js";
+import { FindBar } from "./findbar.js";
+import { STORE, branchesHeight } from "./branches.js";
 import { depthOf, unsearched, findArgs, parseFound, REPO_STATUS, LATEST_TAG, FETCH, REMOTES, fetchable, parseRepoStatus, parseRemotes, webUrl, syncOf } from "./repos.js";
 
 function location(folder) {
@@ -57,7 +60,11 @@ const tilde = (path, on) => (!on && path?.startsWith(home()) ? "~" + path.slice(
 const brief = (c) => ({ hash: c.hash, subject: c.subject, parents: c.parents });
 const count = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
 const sameFiles = (a, b) => a.length === b.length && a.every((f, i) => f.path === b[i].path && f.status === b[i].status);
-const scopeOf = ({ all, remotes }) => `${all} ${remotes}`;
+const scopeOf = (filter, remotes) => `${JSON.stringify(filter)} ${remotes}`;
+// The branch filter is kept per repository (and machine), so it survives restarts.
+const filterKey = (root, on) => (on ? `${on}:${root}` : root);
+const visibleRefs = ({ branches, remoteRefs }, remotes) => [...branches.map((b) => `refs/heads/${b}`), ...(remotes ? remoteRefs : [])];
+const filterOf = (s, remotes) => normalizeFilter(shared(STORE)?.[filterKey(s.root, s.on)], visibleRefs(s, remotes));
 // Folders kept as they were last read, and commits' details (a commit never changes).
 const SEEN = 24, DETAILS = 200;
 const keep = (map, key, value, max) => { map.delete(key); map.set(key, value); if (map.size > max) map.delete(map.keys().next().value); };
@@ -69,30 +76,36 @@ const folderState = () => ({
   state: "loading", root: null, on: null, cwd: null, error: null,
   workspace: null, statuses: new Map(), opened: null, skipped: false,
   base: [], commits: [], rows: [], lanes: 1, labels: new Map(), index: new Map(), hasMore: false, limit: PAGE, files: [], ctx: null,
-  head: null, current: null, branches: [], remoteNames: [], signature: null, scope: null, moreAsked: null,
+  head: null, current: null, branches: [], remoteRefs: [], filter: ALL, remoteNames: [], signature: null, scope: null, moreAsked: null,
   selected: null, details: null, diff: null,
 });
 
 // Everything the table shows for a folder, in one round of git calls: each
 // answers from any subfolder, and status names paths from the repository root.
-async function readFolder(cwd, on, { all, remotes, limit }) {
+// filter: a guess at the repository's branch filter (its root isn't known yet);
+// when the stored one differs, the log is read again with it.
+async function readFolder(cwd, on, { filter, remotes, limit }) {
   const git = (args) => exec("git", [...READ, ...args], { cwd, on });
-  const [top, log, head, current, branches, remoteNames, status] = await Promise.all([
+  let [top, log, head, current, branches, remoteNames, status] = await Promise.all([
     // One commit past the page says whether there are more, as Git Graph asks.
-    exec("git", ["rev-parse", "--show-toplevel"], { cwd, on }), git(logArgs({ all, remotes, limit: limit + 1 })),
+    exec("git", ["rev-parse", "--show-toplevel"], { cwd, on }), git(filterLogArgs(filter, { remotes, limit: limit + 1 })),
     git(["rev-parse", "--verify", "-q", "HEAD"]), git(["symbolic-ref", "-q", "--short", "HEAD"]),
-    git(["for-each-ref", "--format=%(refname)", "refs/heads"]), git(["remote"]), git(STATUS)]);
+    git(["for-each-ref", "--format=%(refname)", "refs/heads", "refs/remotes"]), git(["remote"]), git(STATUS)]);
   if (top.code !== 0) return { state: "norepo", cwd, on };
+  const refs = branches.stdout.split("\n").filter(Boolean), root = top.stdout.trim();
+  const found = { root, on, branches: refs.filter((r) => r.startsWith("refs/heads/")).map((r) => r.slice(11)),
+    remoteRefs: refs.filter((r) => r.startsWith("refs/remotes/") && !r.endsWith("/HEAD")) };
+  const wanted = filterOf(found, remotes);
+  if (!sameFilter(wanted, filter)) log = await git(filterLogArgs(wanted, { remotes, limit: limit + 1 }));
   // A log that fails without a HEAD is a repository with no commits yet.
   if (log.code !== 0 && head.code === 0) throw new Error(log.stderr.trim());
   const base = log.code === 0 ? parseLog(log.stdout) : [];
   return {
-    root: top.stdout.trim(), on, cwd, base: base.slice(0, limit), limit, hasMore: base.length > limit,
+    ...found, filter: wanted, cwd, base: base.slice(0, limit), limit, hasMore: base.length > limit,
     head: head.code === 0 ? head.stdout.trim() : null, current: current.code === 0 ? current.stdout.trim() : null,
-    branches: branches.stdout.split("\n").filter(Boolean).map((r) => r.replace(/^refs\/heads\//, "")),
     remoteNames: remoteNames.stdout.split("\n").filter(Boolean),
     files: status.code === 0 ? parseStatus(status.stdout) : [],
-    signature: [log.stdout, head.stdout, current.stdout, branches.stdout, remoteNames.stdout].join("\0"), scope: scopeOf({ all, remotes }),
+    signature: [log.stdout, head.stdout, current.stdout, branches.stdout, remoteNames.stdout].join("\0"), scope: scopeOf(wanted, remotes),
   };
 }
 
@@ -122,7 +135,7 @@ export class Graph {
     // A scrollbar finds its list by name: each copy (panel, pane) needs its own.
     this.listId = `graph-rows-${Math.random().toString(36).slice(2)}`;
     this.diffId = `${this.listId}-diff`;
-    this.all = true; this.remotes = true; this.wide = false; this.graphMax = 160; this.scale = null;
+    this.remotes = true; this.scroll = VirtualListScrollHandle.new(); this.wide = false; this.graphMax = 160; this.scale = null;
     this.watchToken = 0; this.seenChange = shared("re-git-graph.changed");
     this.cols = withDefaults(); this.drag = null;
     this.seen = new Map(); this.commitDetails = new Map();
@@ -135,6 +148,8 @@ export class Graph {
     this.handle = cx.focus_handle();
     this.reset();
     this.refresh(cx);
+    // keys.json: "re-git-graph.find" (cmd-f while the graph has the keyboard).
+    cx.spawn(async (cx) => { for (;;) { if (await nextCommand() === "find") { this.openFind(cx); cx.notify(); } } });
     cx.timer.after(1500, (cx) => this.warm(cx));
     // Remote spaces can't be watched: poll them gently. New folders get read ahead.
     // The Manygit list re-reads too: edits in a working tree don't touch .git.
@@ -146,7 +161,7 @@ export class Graph {
 
   reset() {
     Object.assign(this, folderState());
-    this.watchToken++; this.watching = null; this.picking = false;
+    this.watchToken++; this.watching = null; this.picking = false; this.find = null;
   }
 
   // Leaving a folder keeps it as it was; coming back shows that at once, while refresh reads it again.
@@ -156,7 +171,7 @@ export class Graph {
     }
     this.context = context; this.reset(); this.loading = null;
     const kept = this.seen.get(context);
-    if (kept && (kept.state === "workspace" || (kept.state === "norepo" ? !kept.warmed : kept.scope === scopeOf(this)))) {
+    if (kept && (kept.state === "workspace" || (kept.state === "norepo" ? !kept.warmed : kept.scope === scopeOf(filterOf(kept, this.remotes), this.remotes)))) {
       Object.assign(this, kept);
       // A folder read ahead has its history but no table yet.
       if (this.root && !this.commits.length) this.build();
@@ -180,9 +195,9 @@ export class Graph {
     cx.spawn(async () => {
       try {
         for (const [key, { cwd, on }] of order) {
-          const scope = scopeOf(this);
-          const read = await readFolder(cwd, on, { all: this.all, remotes: this.remotes, limit: PAGE }).catch(() => null);
-          if (read && key !== this.context && !this.seen.has(key) && scope === scopeOf(this)) {
+          const remotes = this.remotes;
+          const read = await readFolder(cwd, on, { filter: ALL, remotes, limit: PAGE }).catch(() => null);
+          if (read && key !== this.context && !this.seen.has(key) && remotes === this.remotes) {
             // A folder that isn't a repository may hold some: entering it searches (Manygit).
             keep(this.seen, key, { ...folderState(), state: read.state ?? "ready", ...read, warmed: read.state === "norepo" }, SEEN);
           }
@@ -198,7 +213,7 @@ export class Graph {
     if (context !== this.context) { this.enter(context); full = true; }
     if (!cwd) { this.state = "nofolder"; return; }
     // A repository opened from the Manygit list loads in place of the folder.
-    const { all, remotes, limit } = this, opened = this.opened;
+    const { filter, remotes, limit } = this, opened = this.opened;
     const loadKey = JSON.stringify([context, opened]);
     if (this.loading?.key === loadKey) { this.again = this.again === "full" || full ? "full" : "status"; return; }
     // Each load has its own id: opening a repository and coming back can't revive an older one.
@@ -208,7 +223,7 @@ export class Graph {
     cx.spawn(async (cx) => {
       try {
         if (full || !this.root) {
-          const read = await readFolder(opened ?? cwd, on, { all, remotes, limit });
+          const read = await readFolder(opened ?? cwd, on, { filter, remotes, limit });
           if (stale()) return;
           if (read.state === "norepo") {
             if (opened) { this.state = "error"; this.error = `${tilde(opened, on)} isn't a git repository any more.`; return; }
@@ -347,13 +362,16 @@ export class Graph {
   }
 
   build() {
-    const commits = withUncommitted(this.base, this.files.length, this.head);
+    // A branch filter without HEAD has nowhere to hang the uncommitted row.
+    const headShown = this.filter.kind !== "refs" || this.base.some((c) => c.hash === this.head);
+    const commits = withUncommitted(this.base, headShown ? this.files.length : 0, this.head);
     const { rows, width } = layoutLanes(commits);
     this.commits = commits; this.rows = rows; this.lanes = width;
     this.labels = new Map(commits.map((c) => [c.hash, labelsOf(c, this.remotes)]));
     this.index = new Map(commits.map((c, i) => [c.hash, i]));
     this.ctx = { root: this.root, on: this.on, current: this.current, head: this.head, branches: this.branches, remotes: this.remoteNames };
     this.state = commits.length ? "ready" : "empty"; this.error = null;
+    this.find?.update();
     if (this.selected && !this.index.has(this.selected)) { this.selected = null; this.details = null; this.diff = null; }
   }
 
@@ -391,7 +409,24 @@ export class Graph {
   }
 
   loadMore(cx) { this.limit += PAGE; this.refresh(cx); cx.notify(); }
-  setScope(all, cx) { if (this.all !== all) { this.all = all; this.limit = PAGE; this.refresh(cx); } cx.notify(); }
+  // Find's own paging stops at FIND_MAX commits.
+  findMore() { this.limit = Math.min(this.limit + PAGE, FIND_MAX); }
+
+  openFind(cx) {
+    if (this.state !== "ready") return;
+    this.find ??= new FindBar(this);
+    this.find.update();
+    this.find.focus();
+    cx.notify();
+  }
+
+  closeFind(cx) { this.find = null; this.handle.focus(); cx.notify(); }
+
+  openBranches() {
+    const heads = this.branches.map((b) => `refs/heads/${b}`), remotes = this.remotes ? this.remoteRefs : [];
+    openOverlay({ mod: "re-git-graph", kind: "popup", at: "pointer", width: 260, height: branchesHeight(heads.length + remotes.length),
+      props: { role: "branches", key: filterKey(this.root, this.on), heads, remotes } });
+  }
   setRemotes(cx) { this.remotes = !this.remotes; this.refresh(cx); cx.notify(); }
 
   fetch(cx) {
@@ -591,7 +626,8 @@ export class Graph {
     // Merge commits are muted, as Git Graph does by default.
     const fg = commit.uncommitted ? t.muted : commit.parents.length > 1 ? t.dim : t.foreground;
     return h_flex().id(`c-${commit.hash}`).w_full().h(this.rowH()).flex_none().pr(10).gap(LABEL.GAP).items_center().overflow_hidden()
-      .when(commit.head, (e) => e.bg(color + "14")).when(this.selected === commit.hash, (e) => e.bg(t.selected)).hover((s) => s.bg(t.hover))
+      .when(commit.head, (e) => e.bg(color + "14")).when(this.selected === commit.hash, (e) => e.bg(t.selected))
+      .when(Boolean(this.find?.set.has(i)), (e) => e.bg(t.accent + (this.find.current() === i ? "59" : "1f"))).hover((s) => s.bg(t.hover))
       .child(this.graphCell(row, commit, colors, t, width))
       // Labels and description clip together, so many labels never push the fixed columns out.
       .child(h_flex().flex_1().min_w(0).h_full().gap(LABEL.GAP).items_center().overflow_hidden()
@@ -634,6 +670,7 @@ export class Graph {
       .when(Boolean(available()), (e) => e.child(h_flex().id("graph-update").h(24).px(7).gap(5).flex_none().items_center().rounded(6).text_size(11.5)
         .cursor_pointer().text_color(t.accent).hover((s) => s.bg(t.hover)).on_mouse_down("left", (_e, cx) => cx.stop_propagation())
         .on_click(() => openUpdate()).child(div().size(6).rounded(3).bg(t.accent)).child("Update Graph")))
+      .when(this.state === "ready", (e) => e.child(this.iconButton("graph-find", "search", null, Boolean(this.find), (_e, cx) => (this.find ? this.closeFind(cx) : this.openFind(cx)), t)))
       .when(ready && this.remoteNames?.length > 0, (e) => e.child(this.iconButton("graph-fetch", "fetch", this.fetching ? "Fetching…" : null, false, (_e, cx) => this.fetch(cx), t)))
       .when(this.state === "workspace", (e) => {
         const run = this.fetchAll?.root === ws.root ? this.fetchAll : null;
@@ -718,13 +755,12 @@ export class Graph {
 
 
   toolbar(t) {
-    const segment = (id, text, on, action) => div().id(id).h(22).px(9).flex().items_center().rounded(5).text_size(11.5).cursor_pointer()
-      .bg(on ? t.raised : t.background).text_color(on ? t.foreground : t.muted).when(on, (e) => e.border_1().border_color(t.border))
-      .hover((s) => s.text_color(t.foreground)).on_click(action).child(text);
     return h_flex().h(34).flex_none().px(10).gap(8).items_center().border_b(1).border_color(t.border)
-      .child(h_flex().p(2).gap(2).rounded(7).bg(t.background).border_1().border_color(t.border)
-        .child(segment("graph-all", "All branches", this.all, (_e, cx) => this.setScope(true, cx)))
-        .child(segment("graph-current", "Current", !this.all, (_e, cx) => this.setScope(false, cx))))
+      .child(h_flex().id("graph-branches").h(24).max_w(220).pl(7).pr(5).gap(5).min_w(0).items_center().rounded(6).cursor_pointer().text_size(11.5)
+        .bg(t.raised).border_1().border_color(t.border).hover((s) => s.bg(t.hover)).on_click(() => this.openBranches())
+        .child(svg(icon("branch")).size(12).flex_none().text_color(t.muted))
+        .child(div().min_w(0).truncate().child(filterLabel(this.filter)))
+        .child(svg(icon("chevron-down")).size(12).flex_none().text_color(t.muted)))
       .child(h_flex().id("graph-remotes").h(24).px(6).gap(6).items_center().rounded(6).cursor_pointer().text_size(11.5).text_color(t.muted)
         .hover((s) => s.bg(t.hover).text_color(t.foreground)).on_click((_e, cx) => this.setRemotes(cx))
         .child(div().size(13).rounded(3).border_1().border_color(this.remotes ? t.accent : t.input).when(this.remotes, (e) => e.bg(t.accent)).flex().items_center().justify_center()
@@ -764,6 +800,7 @@ export class Graph {
         // Rows of a virtual list can't hold their own handlers: the list reports the row's key.
         .on_item_click((key, cx) => this.clicked(key, cx))
         .on_item_secondary_click((key, e, cx) => this.contextMenu(key, e, cx))
+        .track_scroll(this.scroll)
         .size_full())
       .child(Scrollbar.vertical(this.listId).viewport_from_layout().absolute().inset_0());
   }
@@ -860,6 +897,8 @@ export class Graph {
     // New settings: a depth searches again, tags read every row again.
     const setting = `${depthSetting()} ${tagsShown()}`;
     if (setting !== this.seenSetting) { const first = this.seenSetting === undefined; this.seenSetting = setting; if (!first && !this.opened) this.refresh(cx); }
+    // A new branch filter (from its popup, or another copy) reads the history again from the first page.
+    if (this.root && !this.loading && (this.state === "ready" || this.state === "empty") && !sameFilter(filterOf(this, this.remotes), this.filter)) { this.limit = PAGE; this.refresh(cx); }
     const t = theme(), mono = settings().font_family ?? "JetBrains Mono", ready = this.state === "ready";
     return v_flex().id("re-git-graph").size_full().min_h(0).rounded(10).overflow_hidden().bg(t.background).border_1().border_color(t.border)
       .text_color(t.foreground).text_size(12.5).track_focus(this.handle)
@@ -880,7 +919,7 @@ export class Graph {
       .child(this.header(t))
       .when(this.state === "workspace", (e) => e.child(this.workspaceList(t)))
       .when(Boolean(this.picking && this.workspace && this.opened), (e) => e.child(this.picker(t)))
-      .when(ready, (e) => e.child(this.toolbar(t)).child(this.columns(t, this.graphWidth())).child(this.list(t, mono))
+      .when(ready, (e) => e.child(this.toolbar(t)).when(Boolean(this.find), (el) => el.child(this.find.render(t, (cx) => this.closeFind(cx)))).child(this.columns(t, this.graphWidth())).child(this.list(t, mono))
         .when(Boolean(this.selected), (el) => el.child(this.detailsPane(t, mono))))
       .when(!ready && this.state !== "workspace", (e) => e.child(this.empty(t)));
   }
