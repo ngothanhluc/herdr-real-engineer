@@ -1,10 +1,12 @@
 # Real Engineer
 
 A layout for the [Herdr](https://herdr.dev) desktop app. It is Herdr's `main`
-layout with three changes. The top bar gets a **Graph** button beside Files and
+layout with four changes. The top bar gets a **Graph** button beside Files and
 Changes. The Files panel gets a right-click menu, file operations, and an
 editable preview. The side panel gets a third view: a commit graph of the
-focused terminal's repository, with a branch filter and a find bar.
+focused terminal's repository, with a branch filter and a find bar. And an
+**Awake** switch above the footer keeps the Mac up, on demand or while agents
+work.
 
 ![Real Engineer](preview.png)
 
@@ -20,6 +22,7 @@ See [Credits](#credits).
 | `mods/re-tabs/` | A clone of Herdr's `tabs` mod (`cloned_from` 0.1.13). |
 | `mods/re-files/` | A clone of Herdr's `files` mod (`cloned_from` 0.1.13). |
 | `mods/re-git-graph/` | rabeeh-ta's git-graph 0.3.0, renamed, with a branch filter and a find bar. |
+| `mods/re-awake/` | On, Agent, Off: keeps this Mac awake with `caffeinate`, on demand or while an agent on it works. macOS only. |
 | `keys.json` | The keys the layout expects. Merge it into yours. |
 | `install.sh` | Copies the mods and the layout into `~/.config/herdr-app`. |
 | `RECIPE.md` | The brief to build the layout from scratch. |
@@ -119,6 +122,18 @@ Everything that changes the repository asks first in a dialog, except checking
 out a local branch and the Fetch button. When git refuses, its own message
 stays in the dialog.
 
+### re-awake: keep the Mac awake
+
+A row above the footer: a coffee icon, the word **Awake**, and three pills.
+**On** holds the Mac awake until you turn it off. **Agent** holds it only while
+an agent on this computer is working — the same idea as Orca's Awake setting —
+and lets go when they all finish. **Off** lets macOS sleep as usual.
+`cmd-shift-a` cycles them, and the choice is remembered.
+
+The icon turns `accent` while the assertion is up. When it can't start, it
+turns red and carries the reason. Closing the lid still sleeps the Mac; no
+user process can hold it awake through the lid.
+
 ## What it runs
 
 Read this before you install. The mods run programs and one of them reaches
@@ -142,6 +157,10 @@ the network.
   `open -a "Visual Studio Code"`), `/usr/bin/trash` for Delete, and `test`,
   `touch`, `mkdir`, `mv -n` and `cp -Rn` for the other file operations. It
   writes files only when you save the preview.
+- **re-awake** asks `launchctl` to run `/usr/bin/caffeinate -i -s -w <Herdr's
+  pid>` while it's on or while a local agent works, and `launchctl remove` to
+  stop. It reads the process list once to find Herdr's pid. Nothing leaves the
+  machine.
 - **re-tabs** runs no programs.
 
 ## Install
@@ -187,6 +206,7 @@ herdr-app do pane.split '{"direction":"right","mod":"re-git-graph","props":{"fol
 | `cmd-shift-e` | this layout | Toggle the Files panel |
 | `cmd-shift-g` | this layout | Toggle the Graph panel |
 | `cmd-s` | Files panel | Save the edited file |
+| `cmd-shift-a` | this layout | Cycle Awake: On, Agent, Off |
 | `cmd-f` | Graph | Open the find bar |
 
 Editing `keys.json` makes the whole file yours. Herdr then stops updating it,
@@ -244,8 +264,9 @@ layout does.
   the `tabs`, `files` and `main` files that ship with Herdr 0.1.13
   ([herdrdev/herdr-app](https://github.com/herdrdev/herdr-app), Apache-2.0).
 - Most icons are drawn after [Lucide](https://lucide.dev) (ISC, see
-  `mods/re-git-graph/icons/LICENSE-lucide.txt` and
-  `mods/re-files/icons/LICENSE-lucide.txt`).
+  `mods/re-git-graph/icons/LICENSE-lucide.txt`,
+  `mods/re-files/icons/LICENSE-lucide.txt` and
+  `mods/re-awake/icons/LICENSE-lucide.txt`).
 
 This is a community layout. Herdr's authors and rabeeh-ta did not write,
 review or endorse it.

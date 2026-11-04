@@ -19,8 +19,8 @@ Files panel and the Graph panel. Left to right, on `canvas`, 1px `border`
 dividers:
 
 - **Sidebar**, 268px (44 to 480), `chrome`: Herdr's brand row (46px), the
-  Spaces and Agents lists sharing the height, and the footer (69px). Herdr's
-  own mods, untouched.
+  Spaces and Agents lists sharing the height, a 30px **Awake** row of ours
+  (see below), and the footer (69px). Herdr's own mods, untouched.
 - **Work column**, top to bottom:
   - **Top bar**, 42px, `chrome`, bottom border, draggable window area. Herdr's
     tab bar (tabs, the `+` button) and on the right the panel buttons:
@@ -207,11 +207,34 @@ bottom:
   wide, styled as the Files dialogs, with radio rows for a mode (38px, radius
   8, `accent` or, for a destructive mode, `ansi1`) and checkboxes.
 
+### Awake row
+
+30px above the footer, `chrome`: a 13px coffee icon
+(`mods/re-awake/icons/coffee.svg`), **Awake** at 11.5px (`foreground` while the
+assertion is up, `muted` otherwise), and on the right three 17px pills,
+`On`, `Agent`, `Off` (10px, radius 4; the current one on `selected` with
+`foreground`, the others `muted` on `chrome`). The icon is `accent` while the
+assertion is up, `dim` when not, `blocked` with the reason in place of the
+label when it can't start. On a system that isn't macOS the row reads
+"macOS only".
+
 ## How it behaves
 
 - **Agent statuses** (working, blocked, done, idle) are Herdr's own, in the
   sidebar's Agents list and the pane headers. This layout doesn't change them.
   Nothing in the three mods animates.
+
+### Awake row
+
+- **On** holds the Mac awake until it's turned off. **Agent** holds it while at
+  least one agent in a space on this computer reports `working`, and lets go
+  when none does. **Off** runs nothing.
+- Clicking a pill sets that mode; `cmd-shift-a` (`re-awake.cycle`) goes
+  `On` → `Agent` → `Off` → `On`. The mode is kept in `shared("re-awake")` and
+  survives restarts.
+- The poll is every 20 seconds; the row also re-checks when agent statuses
+  change. What it shows comes from `launchctl list herdr-awake`, never from
+  what it asked for, so a refused start shows red instead of a false On.
 
 ### Top bar
 
@@ -350,16 +373,18 @@ bottom:
 - **Fetch** runs `git fetch --all` and reloads.
 - **Update check**: at most once a day, one `fetch` of
   `api.github.com/repos/ngothanhluc/herdr-real-engineer/releases/latest`. A
-  `tag_name` newer than `VERSION` (`0.3.0`) shows **Update Graph**; its window
+  `tag_name` newer than `VERSION` (in `update.js`) shows **Update Graph**; its window
   shows the release notes, Copy prompt, Release page, Later and Stop checking.
 
 ## Built from
 
 - `layouts/real-engineer.json`: a copy of Herdr's shipped
-  `layouts/main.json` with three edits: the `tabs` block's `content.mod` is
-  `re-tabs`; the `files` child of the `panel-body` stack shows `re-files`; and
+  `layouts/main.json` with four edits: the `tabs` block's `content.mod` is
+  `re-tabs`; the `files` child of the `panel-body` stack shows `re-files`;
   `panel-body` gets a third child,
-  `{ "id": "graph", "type": "block", "content": { "mod": "re-git-graph" } }`.
+  `{ "id": "graph", "type": "block", "content": { "mod": "re-git-graph" } }`;
+  and the `sidebar` column gets, above `sidebar-footer`,
+  `{ "id": "awake", "type": "block", "size": { "px": 30 }, "content": { "mod": "re-awake" } }`.
   Everything else (sidebar, `workspace-chrome`, `spaces`, `agents`, `pane`,
   `changes`, `workspace-status`) is Herdr's shipped mods.
 - `mods/re-tabs/`: `herdr-app do mod.clone '{"name":"tabs","as":"re-tabs"}'`
@@ -436,7 +461,20 @@ bottom:
   `gpui-kit.d.ts` and `jsconfig.json`), and copies the layout, replacing a
   symlink if one is there.
 
+- `mods/re-awake/` runs `launchctl submit -l herdr-awake -- /usr/bin/caffeinate
+  -i -s -w <pid> -t 3600` and `launchctl remove herdr-awake`. Herdr's pid comes
+  from `ps -A -o pid=,comm=` (a mod's `pgrep` can't see the app). The state is
+  `shared("re-awake") = { mode }`; the 20s loop in `init` and a re-check in
+  `render` reconcile it.
+
 ## Watch out
+
+- `re-awake` is macOS only: `launchctl` and `caffeinate` ship with macOS, and
+  the row says so elsewhere. It holds off idle and system sleep on AC power
+  only; a closed lid still sleeps the Mac, and display sleep is allowed.
+- The assertion is tied to Herdr's pid, so quitting Herdr releases it. If that
+  pid is ever reused, `-t 3600` ends the assertion within the hour, and the 20s
+  poll starts it again if the mode still wants it.
 
 - `re-tabs` and `re-files` are clones of shipped mods. They don't get Herdr's
   updates to `tabs` and `files`. After a Herdr update, compare

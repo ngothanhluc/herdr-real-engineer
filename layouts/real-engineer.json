@@ -67,6 +67,16 @@
           ]
         },
         {
+          "id": "awake",
+          "type": "block",
+          "size": {
+            "px": 30
+          },
+          "content": {
+            "mod": "re-awake"
+          }
+        },
+        {
           "id": "sidebar-footer",
           "type": "block",
           "size": {
