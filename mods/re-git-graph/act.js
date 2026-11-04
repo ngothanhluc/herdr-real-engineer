@@ -13,14 +13,14 @@ export async function perform(action, values, ctx, { toast = true } = {}) {
     }
     notify({ title: doneText(action, values), level: "success", timeout: 3000 });
     // A Manygit row that failed in Fetch all reads as fetched again.
-    if (action.type === "fetch") setShared("git-graph.fetched", { root: ctx.root, at: Date.now() });
+    if (action.type === "fetch") setShared("re-git-graph.fetched", { root: ctx.root, at: Date.now() });
     return { ok: true };
   } catch (e) {
     const message = String(e?.message ?? e);
     if (toast) notify({ title: "Git didn't run", body: message, level: "error" });
     return { ok: false, message };
   } finally {
-    setShared("git-graph.changed", Date.now());
+    setShared("re-git-graph.changed", Date.now());
   }
 }
 
@@ -28,7 +28,7 @@ export async function perform(action, values, ctx, { toast = true } = {}) {
 export function openDialog(action, ctx) {
   const spec = dialogFor(action, ctx);
   if (!spec) return false;
-  openOverlay({ mod: "git-graph", kind: "dialog", width: 420, height: dialogHeight(spec), props: { role: "dialog", action, ctx } });
+  openOverlay({ mod: "re-git-graph", kind: "dialog", width: 420, height: dialogHeight(spec), props: { role: "dialog", action, ctx } });
   return true;
 }
 

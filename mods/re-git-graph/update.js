@@ -8,9 +8,9 @@ import { props, shared, setShared, closeOverlay, openOverlay, theme, settings } 
 
 export const VERSION = "0.3.0";
 const CHECK = true;
-const REPO = "rabeeh-ta/herdr-git-graph";
+const REPO = "ngothanhluc/herdr-real-engineer";
 const DAY = 24 * 60 * 60 * 1000;
-export const PROMPT = `Update the git-graph mod from github.com/${REPO}`;
+export const PROMPT = `Update the re-git-graph mod from github.com/${REPO}`;
 
 // a > b for tags like v1.2.3.
 export function newer(a, b) {
@@ -22,8 +22,8 @@ export function newer(a, b) {
 
 // Kept in shared state: it lasts across restarts and every graph copy sees it.
 // A result saved for another repository (a fork, a test) counts as never checked.
-const state = () => { const s = shared("git-graph.update") ?? {}; return s.repo === REPO ? s : { off: s.off }; };
-const save = (change) => setShared("git-graph.update", { ...state(), ...change, repo: REPO });
+const state = () => { const s = shared("re-git-graph.update") ?? {}; return s.repo === REPO ? s : { off: s.off }; };
+const save = (change) => setShared("re-git-graph.update", { ...state(), ...change, repo: REPO });
 
 // The release to offer, or null.
 export function available() {
@@ -37,7 +37,7 @@ export async function check() {
   if (!CHECK || s.off || Date.now() - (s.checked ?? 0) < DAY) return;
   save({ checked: Date.now() }); // before asking, so the other copies don't ask too
   try {
-    const r = await fetch(`https://api.github.com/repos/${REPO}/releases/latest`, { headers: { Accept: "application/vnd.github+json", "User-Agent": "herdr-git-graph" } });
+    const r = await fetch(`https://api.github.com/repos/${REPO}/releases/latest`, { headers: { Accept: "application/vnd.github+json", "User-Agent": "herdr-real-engineer" } });
     if (!r.ok) return;
     const j = await r.json();
     if (typeof j?.tag_name !== "string") return;
@@ -48,7 +48,7 @@ export async function check() {
 }
 
 export function openUpdate() {
-  openOverlay({ mod: "git-graph", kind: "dialog", width: 460, height: 400, props: { role: "update" } });
+  openOverlay({ mod: "re-git-graph", kind: "dialog", width: 460, height: 400, props: { role: "update" } });
 }
 
 // The update window, opened with props { role: "update" }.
@@ -64,7 +64,7 @@ export class Update {
       .border_color(primary ? t.solid : t.input).bg(primary ? t.solid : t.raised)
       .text_color(primary ? t.solid_foreground : t.foreground).text_size(12.5).font_medium().cursor_pointer()
       .hover((st) => st.opacity(0.88)).on_click(action).child(text);
-    return v_flex().id("git-graph-update").track_focus(this.handle).size_full().min_h(0).p(18).bg(t.popover).text_color(t.foreground).text_size(12.8)
+    return v_flex().id("re-git-graph-update").track_focus(this.handle).size_full().min_h(0).p(18).bg(t.popover).text_color(t.foreground).text_size(12.8)
       .on_key_down((e, cx) => { if (e.key === "escape") { close(); cx.stop_propagation(); } })
       .child(h_flex().items_center().child(div().flex_1().text_size(15).font_semibold().child(`Git Graph ${latest?.tag ?? ""} is out`))
         .child(div().text_size(11).text_color(t.dim).child("Esc")))
