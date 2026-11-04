@@ -1,0 +1,12 @@
+{
+  "layout:real-engineer": {
+    "cmd-shift-e": "re-tabs.files",
+    "cmd-shift-g": "re-tabs.graph"
+  },
+  "mod:re-files": {
+    "cmd-s": "re-files.save"
+  },
+  "mod:re-git-graph": {
+    "cmd-f": "re-git-graph.find"
+  }
+}

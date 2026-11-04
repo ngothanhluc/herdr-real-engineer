@@ -1,0 +1,8 @@
+{
+  "name": "herdr-real-engineer",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "for t in tests/*.test.mjs; do node \"$t\" || exit 1; done"
+  }
+}
