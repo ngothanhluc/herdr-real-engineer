@@ -35,6 +35,8 @@ See [Credits](#credits).
 - Key commands `re-tabs.files` and `re-tabs.graph` do what the buttons do.
   `keys.json` binds them to `cmd-shift-e` and `cmd-shift-g`.
 
+![The panel switching between Files, Changes and the graph](demo.gif)
+
 Everything else is Herdr's tab bar as of 0.1.13.
 
 ### re-files: a file manager in the Files panel
