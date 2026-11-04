@@ -405,7 +405,7 @@ bottom:
     dialogs, validation, argv per action); `lanes.js` the lane layout;
     `repos.js` Manygit's `find`, status parse and sync token; `settings.js`;
     `update.js` (`VERSION`, `REPO`, `CHECK`).
-  - Added in this fork: `query.js` (no herdr import: the filter shape
+  - Added in this repo: `query.js` (no herdr import: the filter shape
     `{kind: "all"} | {kind: "current"} | {kind: "refs", refs}`, its log args,
     normalizing a stored filter, `toggleRef`, `findMatches`, `FIND_MAX`
     2000); `branches.js` (the popup); `findbar.js` (the bar, its matches and
@@ -463,7 +463,7 @@ bottom:
   `open -a "Visual Studio Code"` are macOS too.
 - The editor command is one program name, given the path as its only
   argument: `code -w` won't run.
-- The update check asks this fork's releases. Until it publishes one tagged
+- The update check asks this repo's releases. Until it publishes one tagged
   above `v0.3.0`, the check finds nothing.
 - Shared state keys are `re-git-graph.*`: settings, column widths and the
   update state of an installed `git-graph` don't carry over.

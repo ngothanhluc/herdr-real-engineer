@@ -8,8 +8,9 @@ focused terminal's repository, with a branch filter and a find bar.
 
 ![Real Engineer](preview.png)
 
-It is a fork of [rabeeh-ta/herdr-git-graph](https://github.com/rabeeh-ta/herdr-git-graph).
-The commit graph is that project's work. See [Credits](#credits).
+The commit graph in `mods/re-git-graph/` comes from
+[rabeeh-ta/herdr-git-graph](https://github.com/rabeeh-ta/herdr-git-graph) as a git subtree.
+See [Credits](#credits).
 
 ## What's in it
 
@@ -210,6 +211,11 @@ so new default shortcuts in later Herdr releases must be added by hand.
 
 ## Development
 
+To pull a new upstream git-graph release into `mods/re-git-graph/`, run
+`scripts/update-git-graph.sh`. It splits upstream's `mods/git-graph` folder and
+merges it with `git subtree pull --squash`. Then rename any new `git-graph`
+names to `re-git-graph` (the script lists them) and run `npm test`.
+
 ```sh
 npm test                                     # every tests/*.test.mjs, also run in CI
 ./install.sh                                 # copy the mods and layout into Herdr
@@ -228,8 +234,8 @@ layout does.
 
 - The commit graph (`mods/re-git-graph/`) is
   [herdr-git-graph](https://github.com/rabeeh-ta/herdr-git-graph) by
-  [rabeeh-ta](https://github.com/rabeeh-ta), MIT. This fork renames it and adds
-  the branch filter and the find bar. Bugs in those additions are this fork's.
+  [rabeeh-ta](https://github.com/rabeeh-ta), MIT. It is pulled in as a squashed git subtree, renamed, and extended
+  with the branch filter and the find bar. Bugs in those additions are this repo's.
 - `mods/re-tabs/` and `mods/re-files/` are clones of the `tabs` and `files`
   mods that ship with Herdr 0.1.13.
 - Most icons are drawn after [Lucide](https://lucide.dev) (ISC, see
@@ -238,5 +244,6 @@ layout does.
 
 ## License
 
-MIT, see [LICENSE](LICENSE). The copyright notice there is rabeeh-ta's and
-stays with this fork.
+MIT, see [LICENSE](LICENSE). `mods/re-git-graph/` keeps rabeeh-ta's MIT
+notice in `mods/re-git-graph/LICENSE`. `mods/re-files/` and `mods/re-tabs/` are
+modified copies of Herdr's shipped mods (Apache-2.0).
