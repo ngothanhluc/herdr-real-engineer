@@ -1,3 +1,7 @@
+// Modified copy of Herdr's `files` mod (app 0.1.13, Apache-2.0,
+// github.com/herdrdev/herdr-app). Changed: renamed to re-files, the right-click
+// menu and file operations, and the editable preview with save and conflict
+// handling. See README.md.
 // A lazy file browser for the focused pane's folder, with bounded read-only previews.
 import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex, Editor, EditorState } from "gpui-base";

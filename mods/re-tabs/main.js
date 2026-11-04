@@ -1,3 +1,7 @@
+// Modified copy of Herdr's `tabs` mod (app 0.1.13, Apache-2.0,
+// github.com/herdrdev/herdr-app). Changed: renamed to re-tabs, a Graph button,
+// panel toggles that keep the space's choice, and the re-tabs.* key commands.
+// See README.md.
 import { View, div, svg, image } from "gpui-kit";
 import { h_flex } from "gpui-base";
 import { spaces, panes, run, openOverlay, theme, window, shared, layout, settings, nextCommand } from "herdr";

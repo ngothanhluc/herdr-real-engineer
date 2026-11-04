@@ -23,3 +23,23 @@ SOFTWARE.
 mods/re-git-graph is derived from rabeeh-ta/herdr-git-graph and keeps its own
 MIT license in mods/re-git-graph/LICENSE. mods/re-files and mods/re-tabs are
 modified copies of Herdr's shipped files and tabs mods, Apache-2.0.
+
+Scope
+
+The MIT license above covers the work written for this repository: the layout
+changes, the docs, install.sh, the tests, and the code added to the three
+mods.
+
+It does not cover the code those mods started from:
+
+- mods/re-tabs and mods/re-files are modified copies of the `tabs` and `files`
+  mods shipped with Herdr 0.1.13, which are Apache-2.0 and part of
+  https://github.com/herdrdev/herdr-app. The full license text is in
+  LICENSE-APACHE-2.0.txt, and each mod's README says what changed.
+- layouts/real-engineer.json is a modified copy of Herdr's shipped `main`
+  layout, Apache-2.0.
+- mods/re-git-graph starts from rabeeh-ta/herdr-git-graph v0.3.0 (MIT). Its
+  copyright and permission notice are kept unchanged in
+  mods/re-git-graph/LICENSE.
+
+See THIRD-PARTY.md for versions, links and the changes made to each part.

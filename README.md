@@ -64,9 +64,10 @@ Everything else is Herdr's tab bar as of 0.1.13.
 ### re-git-graph: the commit graph
 
 A commit graph in the spirit of VS Code's
-[Git Graph](https://github.com/mhutchie/vscode-git-graph) extension. It is a
-native Herdr mod, written from scratch (no web view, no code from the VS Code
-extension).
+[Git Graph](https://github.com/mhutchie/vscode-git-graph) extension.
+[rabeeh-ta](https://github.com/rabeeh-ta) wrote it as a native Herdr mod — no
+web view, no code from the VS Code extension — and this repository adds the
+branch filter, the find bar and the rename. See [Credits](#credits).
 
 - **The graph.** Git Graph's table (graph, description, date, and when there's
   room, author and commit), newest first, with a lane per branch and curves where
@@ -236,16 +237,24 @@ layout does.
 
 - The commit graph (`mods/re-git-graph/`) is
   [herdr-git-graph](https://github.com/rabeeh-ta/herdr-git-graph) by
-  [rabeeh-ta](https://github.com/rabeeh-ta), MIT. It is pulled in as a squashed git subtree, renamed, and extended
-  with the branch filter and the find bar. Bugs in those additions are this repo's.
-- `mods/re-tabs/` and `mods/re-files/` are clones of the `tabs` and `files`
-  mods that ship with Herdr 0.1.13.
+  [rabeeh-ta](https://github.com/rabeeh-ta), MIT, v0.3.0. It is pulled in as a
+  squashed git subtree, renamed, and extended with the branch filter and the
+  find bar. Bugs in those additions are this repo's.
+- `mods/re-tabs/`, `mods/re-files/` and `layouts/real-engineer.json` start from
+  the `tabs`, `files` and `main` files that ship with Herdr 0.1.13
+  ([herdrdev/herdr-app](https://github.com/herdrdev/herdr-app), Apache-2.0).
 - Most icons are drawn after [Lucide](https://lucide.dev) (ISC, see
   `mods/re-git-graph/icons/LICENSE-lucide.txt` and
   `mods/re-files/icons/LICENSE-lucide.txt`).
 
+This is a community layout. Herdr's authors and rabeeh-ta did not write,
+review or endorse it.
+
 ## License
 
-MIT, see [LICENSE](LICENSE). `mods/re-git-graph/` keeps rabeeh-ta's MIT
-notice in `mods/re-git-graph/LICENSE`. `mods/re-files/` and `mods/re-tabs/` are
-modified copies of Herdr's shipped mods (Apache-2.0).
+The work written here is MIT, see [LICENSE](LICENSE). The code the mods start
+from keeps its own license: Herdr's mods and layout are Apache-2.0
+([LICENSE-APACHE-2.0.txt](LICENSE-APACHE-2.0.txt)), and
+`mods/re-git-graph/` keeps rabeeh-ta's MIT notice in
+`mods/re-git-graph/LICENSE`. [THIRD-PARTY.md](THIRD-PARTY.md) lists every part,
+its version and what changed.
