@@ -140,10 +140,11 @@ user process can hold it awake through the lid.
 
 ### re-markdown: a Markdown window
 
-`cmd-shift-m` opens a 560 px window over the layout. It lists the Markdown
+`cmd-shift-m` opens a 900 px window over the layout. It lists the Markdown
 files in the focused pane's folder: `git ls-files` first, or a depth-3 search
 outside a repository, sorted shallowest first and capped at 40. Click one to
-render it.
+render it. `−` and `+` in the header change the width in 120 px steps between
+560 and 1600, and the choice is kept.
 
 The window is read-only. `TextView` draws headings, lists, tables, code blocks
 and links; links open in the browser, and YAML front matter shows as a YAML

@@ -3,9 +3,12 @@
 // reloads while open, and another mod can hand it a file with props { path }.
 import { View, div } from "gpui-kit";
 import { v_flex, h_flex, TextView } from "gpui-base";
-import { spaces, panes, focused, exec, readTextFile, watchFolder, theme, home, props, closeOverlay } from "herdr";
+import { spaces, panes, focused, exec, readTextFile, watchFolder, theme, home, props, closeOverlay, openOverlay, shared, setShared } from "herdr";
 
 const FRONT = /^---\r?\n/;
+const MOD = "re-markdown", WIDTH_KEY = "re-markdown.width";
+const DEFAULT_WIDTH = 900, MIN_WIDTH = 560, MAX_WIDTH = 1600, WIDTH_STEP = 120;
+const clampWidth = (px) => Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, Math.round(px)));
 
 // Front matter as a fenced block: TextView reads a leading `---` as a rule and
 // the YAML under it as prose, which is not what the file means.
@@ -53,6 +56,7 @@ async function listFiles(root, on) {
 class Markdown extends View {
   init(_props, cx) {
     this.uid = `md-${Math.random().toString(36).slice(2, 9)}`;
+    this.width = clampWidth(Number(props()?.width) || Number(shared(WIDTH_KEY)) || DEFAULT_WIDTH);
     this.serial = 0;
     this.listGen = 0;
     this.readGen = 0;
@@ -80,6 +84,11 @@ class Markdown extends View {
     else this.watch(cx);
     const start = props()?.path;
     if (typeof start === "string" && start) this.open(start, cx);
+    // mod.open uses mod.json's width; the saved one wins, once.
+    if (!props()?.width && this.width !== DEFAULT_WIDTH) {
+      cx.timer.after(0, () => openOverlay({ mod: MOD, kind: "window", width: this.width, height: 0.9, key: MOD,
+        props: { width: this.width, ...(typeof start === "string" && start ? { path: start } : {}) } }));
+    }
   }
 
   close() {
@@ -190,6 +199,16 @@ class Markdown extends View {
     cx.notify();
   }
 
+  resize(delta) {
+    const width = clampWidth(this.width + delta);
+    if (width === this.width) return;
+    this.width = width;
+    setShared(WIDTH_KEY, width);
+    const spec = { mod: MOD, kind: "window", width, height: 0.9, key: MOD, props: { width } };
+    if (this.file) spec.props.path = join(this.root, this.file);
+    openOverlay(spec);
+  }
+
   closeWindow() {
     const overlay = props()?.overlay;
     if (overlay) closeOverlay(overlay);
@@ -236,6 +255,12 @@ class Markdown extends View {
           .on_click((_e, cx) => this.back(cx)).child("←")))
         .child(div().font_semibold().child("Markdown"))
         .child(div().flex_1().min_w(0).truncate().text_right().text_size(12).text_color(t.dim).child(title))
+        .child(div().id(`${this.uid}-narrow`).w(20).h(20).flex_none().flex().items_center().justify_center()
+          .cursor_pointer().text_color(t.muted).hover((s) => s.text_color(t.foreground)).tooltip(`Narrower (${this.width}px)`)
+          .on_click(() => this.resize(-WIDTH_STEP)).child("−"))
+        .child(div().id(`${this.uid}-wide`).w(20).h(20).flex_none().flex().items_center().justify_center()
+          .cursor_pointer().text_color(t.muted).hover((s) => s.text_color(t.foreground)).tooltip(`Wider (${this.width}px)`)
+          .on_click(() => this.resize(WIDTH_STEP)).child("+"))
         .child(div().id(`${this.uid}-close`).w(20).h(20).flex_none().flex().items_center().justify_center()
           .cursor_pointer().text_color(t.muted).hover((s) => s.text_color(t.foreground))
           .on_click(() => this.closeWindow()).child("×")))

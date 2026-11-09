@@ -183,7 +183,8 @@ class Files extends View {
   // The same window key replaces an open preview, so this never stacks two.
   previewMarkdown() {
     if (!this.file || !this.root) return;
-    openOverlay({ mod: "re-markdown", kind: "window", width: 560, height: 0.9, key: "re-markdown", props: { path: `${this.root}/${this.file}` } });
+    const width = Number(shared("re-markdown.width")) || 900;
+    openOverlay({ mod: "re-markdown", kind: "window", width, height: 0.9, key: "re-markdown", props: { path: `${this.root}/${this.file}`, width } });
   }
 
   // A menu action changed files: reload, open the folders down to what it made, and open a new file.

@@ -220,12 +220,12 @@ label when it can't start. On a system that isn't macOS the row reads
 
 ### Markdown window
 
-`cmd-shift-m` opens a 560px-wide, 90%-tall window over the layout, in
+`cmd-shift-m` opens a 900px-wide, 90%-tall window over the layout, in
 `background` with a 1px `border` and radius 10. The 42px header reads
-**Markdown** on the left, the folder or file name right-aligned in `dim`, and a
-`×`. The body lists the folder's Markdown files in 28px rows: the file name,
-its folder in `dim` on the right. Choosing one shows `←`, the file name and the
-rendered document.
+**Markdown** on the left, the folder or file name right-aligned in `dim`, and
+`−`, `+` and `×` at the right. The body lists the folder's Markdown files in
+28px rows: the file name, its folder in `dim` on the right. Choosing one shows
+`←`, the file name and the rendered document.
 
 ### Review pane
 
@@ -268,6 +268,9 @@ section above the same file list.
 - The Files panel header shows **Preview** when its open file is Markdown. It
   calls `openOverlay` with the same `key`, so a second click replaces the
   window in place.
+- `−` and `+` change the width in 120px steps between 560 and 1600. Herdr has
+  no resize API, so the mod reopens its own overlay with the same `key` and the
+  new width, and keeps the choice in `shared("re-markdown.width")`.
 
 ### Review pane
 
