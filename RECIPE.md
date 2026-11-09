@@ -388,7 +388,7 @@ label when it can't start. On a system that isn't macOS the row reads
   Everything else (sidebar, `workspace-chrome`, `spaces`, `agents`, `pane`,
   `changes`, `workspace-status`) is Herdr's shipped mods.
 - `mods/re-tabs/`: `herdr-app do mod.clone '{"name":"tabs","as":"re-tabs"}'`
-  (`mod.json` `cloned_from: { name: "tabs", version: "0.1.13" }`), then:
+  (`mod.json` `cloned_from: { name: "tabs", version: "0.1.14" }`), then:
   - a module-level `togglePanel(id)`: `layout.hide {id: "panel"}` when the
     panel shows `id`, else `layout.select {stack: "panel-body", child: id}`
     and `layout.show {id: "panel"}`. The panel buttons' `on_click` calls it.
@@ -398,7 +398,7 @@ label when it can't start. On a system that isn't macOS the row reads
     `panelButton("graph", "Graph", "mods/re-git-graph/icons/graph.svg")` after
     Changes.
   - Its own `mods/re-tabs/win-*.svg` paths for the Windows buttons.
-- `mods/re-files/`: a clone of `files` (`cloned_from` 0.1.13). `main.js`
+- `mods/re-files/`: a clone of `files` (`cloned_from` 0.1.14). `main.js`
   keeps Herdr's panel and adds `props().role`: none, the panel; `"menu"`
   (`openOverlay({ mod: "re-files", kind: "popup", at: "pointer", width: 240,
   height, props: { role: "menu", target, ctx } })`); `"dialog"` (`kind:
@@ -535,7 +535,7 @@ label when it can't start. On a system that isn't macOS the row reads
   ids of Herdr's `main` layout.
 - Herdr's `exec` stops a command after 30 s: a slow fetch, pull, push or
   pre-commit hook fails there.
-- Tested on Herdr app 0.1.13 on macOS. Untested: Linux, Windows. Manygit needs
+- Tested on Herdr app 0.1.14 on macOS. Untested: Linux, Windows. Manygit needs
   `find` and `env`, so not Windows.
 
 ## Done when

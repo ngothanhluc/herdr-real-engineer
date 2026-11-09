@@ -19,8 +19,8 @@ See [Credits](#credits).
 | Path | What it is |
 |------|------------|
 | `layouts/real-engineer.json` | Herdr's `main` layout. The top bar uses `re-tabs`, the Files panel uses `re-files`, and the side panel stack `panel-body` has a third child, `graph`, showing `re-git-graph`. |
-| `mods/re-tabs/` | A clone of Herdr's `tabs` mod (`cloned_from` 0.1.13). |
-| `mods/re-files/` | A clone of Herdr's `files` mod (`cloned_from` 0.1.13). |
+| `mods/re-tabs/` | A clone of Herdr's `tabs` mod (`cloned_from` 0.1.14). |
+| `mods/re-files/` | A clone of Herdr's `files` mod (`cloned_from` 0.1.14). |
 | `mods/re-git-graph/` | rabeeh-ta's git-graph 0.3.0, renamed, with a branch filter and a find bar. |
 | `mods/re-awake/` | On, Agent, Off: keeps this Mac awake with `caffeinate`, on demand or while an agent on it works. macOS only. |
 | `keys.json` | The keys the layout expects. Merge it into yours. |
@@ -40,7 +40,7 @@ See [Credits](#credits).
 
 ![The panel switching between Files, Changes and the graph](demo.gif)
 
-Everything else is Herdr's tab bar as of 0.1.13.
+Everything else is Herdr's tab bar as of 0.1.14.
 
 ### re-files: a file manager in the Files panel
 
@@ -214,7 +214,7 @@ so new default shortcuts in later Herdr releases must be added by hand.
 
 ## Limits
 
-- Tested on Herdr app 0.1.13 on macOS. Linux and Windows aren't tested.
+- Tested on Herdr app 0.1.14 on macOS. Linux and Windows aren't tested.
 - `re-tabs` and `re-files` are clones. They don't get Herdr's updates to `tabs`
   and `files`. After a Herdr update, compare `cloned_from.version` in their
   `mod.json` with the new version, and clone again if the shipped mods changed.
@@ -261,7 +261,7 @@ layout does.
   squashed git subtree, renamed, and extended with the branch filter and the
   find bar. Bugs in those additions are this repo's.
 - `mods/re-tabs/`, `mods/re-files/` and `layouts/real-engineer.json` start from
-  the `tabs`, `files` and `main` files that ship with Herdr 0.1.13
+  the `tabs`, `files` and `main` files that ship with Herdr 0.1.14
   ([herdrdev/herdr-app](https://github.com/herdrdev/herdr-app), Apache-2.0).
 - Most icons are drawn after [Lucide](https://lucide.dev) (ISC, see
   `mods/re-git-graph/icons/LICENSE-lucide.txt`,
