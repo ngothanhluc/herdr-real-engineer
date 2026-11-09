@@ -225,7 +225,7 @@ sh(repo, "stash", "pop", "-q");
 ok(run({ type: "resetUncommitted" }, { mode: "hard" }));
 assert.equal(git(repo, ["status", "--porcelain"]).stdout, "?? new.txt\n", "hard reset keeps untracked files");
 // Commit: staging everything (untracked too), or only what's staged.
-assert.deepEqual(labelsIn(G.menuFor({ kind: "uncommitted" }, ctxOf())), ["Commit…", "Stash uncommitted changes…", "Reset uncommitted changes…", "Show in Changes panel"]);
+assert.deepEqual(labelsIn(G.menuFor({ kind: "uncommitted" }, ctxOf())), ["Commit…", "Stash uncommitted changes…", "Reset uncommitted changes…"]);
 assert.match(G.validate({ type: "commit" }, { message: "  ", all: true }, ctxOf()), /empty/);
 assert.throws(() => G.commandsFor({ type: "commit" }, { message: "" }), /Empty commit message/);
 writeFileSync(join(repo, "three.txt"), "committed"); writeFileSync(join(repo, "new.txt"), "new");

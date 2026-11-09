@@ -3,11 +3,11 @@
 // a pane. Labels take double-clicks (checkout) and right-clicks (menus).
 import { div, svg, PathBuilder } from "gpui-kit";
 import { v_flex, h_flex, Scrollbar, v_virtual_list, VirtualListScrollHandle } from "gpui-base";
-import { spaces, panes, focused, exec, watchFolder, readTextFile, theme, settings, props, shared, setShared, openOverlay, home, notify, knownAgents, updates, nextCommand, run } from "herdr";
+import { spaces, panes, focused, exec, watchFolder, readTextFile, theme, settings, props, shared, setShared, openOverlay, home, notify, knownAgents, updates, nextCommand } from "herdr";
 import { layoutLanes } from "./lanes.js";
 import { READ, STATUS, UNCOMMITTED, LABEL, parseLog, parseStatus, withUncommitted, labelsOf, hitLabel,
   menuFor, menuHeight, fileArgs, joinFiles, diffArgs, diffRows } from "./git.js";
-import { perform, openDialog, showChanges } from "./act.js";
+import { perform, openDialog } from "./act.js";
 import { icon } from "./menu.js";
 import { available, check, openUpdate, newer } from "./update.js";
 import { ALL, FIND_MAX, filterLogArgs, normalizeFilter, sameFilter, filterLabel } from "./query.js";
@@ -146,6 +146,8 @@ export class Graph {
     // Herdr's agents per machine, for a row's "New … tab" (as its + menu lists them).
     this.agents = new Map();
     this.handle = cx.focus_handle();
+    // Inside the panel's tabbed shell the outer card is drawn once, by the shell.
+    this.embedded = false;
     this.reset();
     this.refresh(cx);
     // keys.json: "re-git-graph.find" (cmd-f while the graph has the keyboard).
@@ -533,6 +535,16 @@ export class Graph {
     cx.notify();
   }
 
+  // cmd-shift-r lands here: the worktree's changes are the graph's own
+  // uncommitted row, so Changes needs no tab. Pressing again keeps the row.
+  showUncommitted(cx) {
+    const commit = this.commits.find((c) => c.uncommitted);
+    if (!commit) return false;
+    if (this.selected !== commit.hash) this.pick(commit, cx);
+    else this.handle.focus();
+    return true;
+  }
+
   loadDetails(commit, cx) {
     const hash = commit.hash, git = (args) => exec("git", [...READ, ...args], { cwd: this.root, on: this.on });
     const key = `${this.on}\0${this.root}\0${hash}`, known = !commit.uncommitted && this.commitDetails.get(key);
@@ -654,11 +666,11 @@ export class Graph {
     const repo = ws && this.opened ? ws.repos.find((r) => r.path === this.opened) : null;
     const settingsShown = this.state === "workspace" || (this.state === "norepo" && !this.skipped);
     return h_flex().h(42).flex_none().px(14).gap(8).items_center().border_b(1).border_color(t.border)
-      .when(!repo, (e) => e.child(div().text_size(13).font_semibold().child(ws ? "Git Graph" : "Git")))
+      .when(!repo, (e) => e.child(div().text_size(13).font_semibold().child("Git")))
       .when(Boolean(repo), (e) => e
         .child(h_flex().id("graph-back").h(24).pl(2).pr(6).gap(3).flex_none().items_center().rounded(6).cursor_pointer()
           .hover((s) => s.bg(t.hover)).on_click((_e, cx) => this.back(cx))
-          .child(svg(icon("back")).size(14).flex_none().text_color(t.muted)).child(div().text_size(13).font_semibold().child("Git Graph")))
+          .child(svg(icon("back")).size(14).flex_none().text_color(t.muted)).child(div().text_size(13).font_semibold().child("Git")))
         .child(h_flex().id("graph-repository").h(22).px(7).gap(5).min_w(0).items_center().rounded(6).cursor_pointer()
           .bg(this.picking ? t.selected : t.raised).text_color(t.foreground).hover((s) => s.bg(t.hover)).on_click((_e, cx) => this.togglePicker(cx))
           .child(svg(icon("folder")).size(12).flex_none()).child(div().min_w(0).truncate().text_size(11.5).font_semibold().child(repo.name))))
@@ -669,8 +681,7 @@ export class Graph {
       // A newer release: a dot, and the update window on click.
       .when(Boolean(available()), (e) => e.child(h_flex().id("graph-update").h(24).px(7).gap(5).flex_none().items_center().rounded(6).text_size(11.5)
         .cursor_pointer().text_color(t.accent).hover((s) => s.bg(t.hover)).on_mouse_down("left", (_e, cx) => cx.stop_propagation())
-        .on_click(() => openUpdate()).child(div().size(6).rounded(3).bg(t.accent)).child("Update Graph")))
-      .when(this.state === "ready", (e) => e.child(this.iconButton("graph-review", "merge", "Review", false, (_e, cx) => this.openReview(cx), t)))
+        .on_click(() => openUpdate()).child(div().size(6).rounded(3).bg(t.accent)).child("Update Git")))
       .when(this.state === "ready", (e) => e.child(this.iconButton("graph-find", "search", null, Boolean(this.find), (_e, cx) => (this.find ? this.closeFind(cx) : this.openFind(cx)), t)))
       .when(ready && this.remoteNames?.length > 0, (e) => e.child(this.iconButton("graph-fetch", "fetch", this.fetching ? "Fetching…" : null, false, (_e, cx) => this.fetch(cx), t)))
       .when(this.state === "workspace", (e) => {
@@ -683,26 +694,6 @@ export class Graph {
 
   openSettings() {
     openOverlay({ mod: "re-git-graph", kind: "popup", at: "pointer", width: 240, height: 92, props: { role: "settings" } });
-  }
-
-  // One review pane per space. The pane records itself in shared state because
-  // a pane's props aren't visible to panes(); a graph pane looks like a review
-  // pane by mod name alone.
-  openReview(cx) {
-    const root = this.root;
-    if (!root) return;
-    const f = focused(), space = spaces().find((s) => s.active);
-    const pane = f?.pane ? panes().find((p) => p.pane === f.pane) : null;
-    const tabs = new Set((space?.tabs ?? []).map((tab) => tab.id));
-    const saved = shared("re-git-graph.reviewPane");
-    const open = saved ? panes().find((p) => p.pane === saved && tabs.has(p.tab)) : null;
-    if (open) return run("pane.focus", { pane: open.pane });
-    const before = new Set(panes().map((p) => p.pane));
-    run("pane.split", { direction: "right", ...(pane ? { pane: pane.pane } : {}), mod: "re-git-graph", props: { root, view: "review" } });
-    cx.timer.after(80, () => {
-      const added = panes().find((p) => p.mod === "re-git-graph" && !before.has(p.pane));
-      if (added) setShared("re-git-graph.reviewPane", added.pane);
-    });
   }
 
   // Git Graph's repository pane: grouped by folder, each row its branch, uncommitted
@@ -848,10 +839,7 @@ export class Graph {
     const title = commit.uncommitted ? "Uncommitted changes" : `Commit ${commit.hash.slice(0, 8)}`;
     const body = v_flex().id("graph-details").flex_1().min_h(0).overflow_y_scrollbar().px(14).py(10).gap(4);
     const pane = (content) => v_flex().flex_none().h(320).border_t(1).border_color(t.border)
-      .child(top.child(div().flex_1().text_color(t.muted).child(title))
-        .when(Boolean(commit.uncommitted), (e) => e.child(div().id("graph-open-changes").px(6).py(1).rounded(4).text_color(t.accent).cursor_pointer().hover((s) => s.bg(t.hover))
-          .on_click(() => showChanges()).child("Open Changes")))
-        .child(close))
+      .child(top.child(div().flex_1().text_color(t.muted).child(title)).child(close))
       .child(content);
     if (d?.error) return pane(body.child(div().text_color(t.ansi1).child(d.error)));
     const meta = (k, v, color) => h_flex().gap(8).text_size(11.5).child(div().w(64).flex_none().text_color(t.dim).child(k)).child(div().min_w(0).truncate().text_color(color ?? t.muted).child(v));
@@ -921,7 +909,8 @@ export class Graph {
     // A new branch filter (from its popup, or another copy) reads the history again from the first page.
     if (this.root && !this.loading && (this.state === "ready" || this.state === "empty") && !sameFilter(filterOf(this, this.remotes), this.filter)) { this.limit = PAGE; this.refresh(cx); }
     const t = theme(), mono = settings().font_family ?? "JetBrains Mono", ready = this.state === "ready";
-    return v_flex().id("re-git-graph").size_full().min_h(0).rounded(10).overflow_hidden().bg(t.background).border_1().border_color(t.border)
+    return v_flex().id("re-git-graph").size_full().min_h(0).overflow_hidden().bg(t.background)
+      .when(!this.embedded, (e) => e.rounded(10).border_1().border_color(t.border))
       .text_color(t.foreground).text_size(12.5).track_focus(this.handle)
       .on_mouse_move((e, cx) => this.moveDrag(e, cx))
       .on_mouse_up("left", (_e, cx) => this.endDrag(cx))

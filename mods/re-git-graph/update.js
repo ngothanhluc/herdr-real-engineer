@@ -66,7 +66,7 @@ export class Update {
       .hover((st) => st.opacity(0.88)).on_click(action).child(text);
     return v_flex().id("re-git-graph-update").track_focus(this.handle).size_full().min_h(0).p(18).bg(t.popover).text_color(t.foreground).text_size(12.8)
       .on_key_down((e, cx) => { if (e.key === "escape") { close(); cx.stop_propagation(); } })
-      .child(h_flex().items_center().child(div().flex_1().text_size(15).font_semibold().child(`Git Graph ${latest?.tag ?? ""} is out`))
+      .child(h_flex().items_center().child(div().flex_1().text_size(15).font_semibold().child(`Git ${latest?.tag ?? ""} is out`))
         .child(div().text_size(11).text_color(t.dim).child("Esc")))
       .child(div().pt(6).text_color(t.muted).child(`You have v${VERSION}. To update, ask your Herdr agent:`))
       .child(div().mt(8).px(10).py(8).rounded(8).bg(t.background).border_1().border_color(t.border).font_family(settings().font_family ?? "JetBrains Mono").text_size(12).child(PROMPT))

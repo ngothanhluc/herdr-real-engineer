@@ -141,7 +141,6 @@ export function menuFor(target, ctx) {
       section(item("Commit…", "commit", { type: "commit", staged: Boolean(target.staged) })),
       section(item("Stash uncommitted changes…", "stash", { type: "stash" })),
       section(item("Reset uncommitted changes…", "reset", { type: "resetUncommitted" })),
-      section(item("Show in Changes panel", "mods/changes/changes.svg", { type: "showChanges" })),
     ];
   } else if (target.kind === "branch") {
     const name = target.name, current = name === ctx.current;

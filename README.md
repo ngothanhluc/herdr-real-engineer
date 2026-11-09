@@ -1,13 +1,14 @@
 # Real Engineer
 
 A layout for the [Herdr](https://herdr.dev) desktop app. It is Herdr's `main`
-layout with four changes. The top bar gets a **Graph** button beside Files and
-Changes. The Files panel gets a right-click menu, file operations, and an
-editable preview. The side panel gets a third view: a commit graph of the
-focused terminal's repository, with a branch filter and a find bar. And an
-**Awake** switch above the footer keeps the Mac up, on demand or while agents
-work. A Markdown window (`cmd-shift-m`) and a review pane (`cmd-shift-r`) come
-along too. The review pane is a second view of `re-git-graph`.
+layout with a few changes. The top bar drops Herdr's **Changes** button and
+keeps **Files** and **Git**. The Files panel gets a right-click menu, file
+operations, and an editable preview. The side panel's **Git** view holds a
+commit graph of the focused terminal's repository, with a branch filter and a
+find bar. And an **Awake** switch above the footer keeps the Mac up, on demand
+or while agents work. A Markdown window (`cmd-shift-m`) and Review
+(`cmd-shift-r`) come along too. Review and Git identity are two more tabs in
+the Git view.
 
 ![Real Engineer](preview.png)
 
@@ -22,25 +23,26 @@ now a fork of it. See [Credits](#credits).
 | `layouts/real-engineer.json` | Herdr's `main` layout. The top bar uses `re-tabs`, the Files panel uses `re-files`, and the side panel stack `panel-body` has a third child, `graph`, showing `re-git-graph`. |
 | `mods/re-tabs/` | A clone of Herdr's `tabs` mod (`cloned_from` 0.1.14). |
 | `mods/re-files/` | A clone of Herdr's `files` mod (`cloned_from` 0.1.14). |
-| `mods/re-git-graph/` | A fork of rabeeh-ta's git-graph 0.3.0: renamed, a branch filter, a find bar, and the review pane. No longer synced with upstream. |
+| `mods/re-git-graph/` | A fork of rabeeh-ta's git-graph 0.3.0: renamed, a branch filter, a find bar, the Pull request tab, local changes in the graph's uncommitted row, and a Config tab that sets the repository's `user.name` and `user.email`. No longer synced with upstream. |
 | `mods/re-awake/` | On, Agent, Off: keeps this Mac awake with `caffeinate`, on demand or while an agent on it works. macOS only. |
 | `mods/re-markdown/` | A read-only Markdown window for the focused pane's folder. `cmd-shift-m`. |
+| `docs/git-config.md` | What the Config tab sets and how Git resolves an identity. |
 | `keys.json` | The keys the layout expects. Merge it into yours. |
 | `install.sh` | Copies the mods and the layout into `~/.config/herdr-app`. |
 | `RECIPE.md` | The brief to build the layout from scratch. |
 
 ## What each mod adds
 
-### re-tabs: a Graph button and panel keys
+### re-tabs: a Git button and panel keys
 
-- A **Graph** button after Files and Changes. It shows only in a layout that has
+- A **Git** button after Files. It shows only in a layout that has
   a `graph` node.
 - Each panel button opens its panel, switches the open panel to it, or closes
   the panel when it already shows.
 - Key commands `re-tabs.files` and `re-tabs.graph` do what the buttons do.
   `keys.json` binds them to `cmd-shift-e` and `cmd-shift-g`.
 
-![The panel switching between Files, Changes and the graph](demo.gif)
+![The panel switching between Files and the graph](demo.gif)
 
 Everything else is Herdr's tab bar as of 0.1.14.
 
@@ -90,7 +92,7 @@ branch filter, the find bar and the rename. See [Credits](#credits).
   [upstream manygit](https://github.com/rabeeh-ta/manygit). Each row shows its branch,
   uncommitted changes, and whether it's ahead (↑) or behind (↓) its upstream,
   not pushed, or has no remote. Click one for its graph. Its name in the header
-  drops the list down to switch to another, and **‹ Git Graph** goes back.
+  drops the list down to switch to another, and **‹ Git** goes back.
   Right-click one for a new agent or terminal tab in it, then pull, push or
   fetch, commit, stash or reset its changes, open its remote's page, or copy
   its path. It searches 3 folders deep (1 to 5 in the gear's settings), and
@@ -102,7 +104,15 @@ branch filter, the find bar and the rename. See [Credits](#credits).
   branches and tags have their own. A toolbar checkbox shows or hides remote
   branches.
 - **Uncommitted changes** sit on top as their own row, joined to HEAD by a
-  dashed line.
+  dashed line. Selecting the row lists the changed files; a file opens its
+  diff. `cmd-shift-r` lands there.
+- **Git config.** The **Config** tab is who this repository commits as. It
+  shows `user.name` and `user.email` with the scope each comes from, and the
+  pairs you have used before: pick one to write it to the repository's own
+  config, or type a new pair. Every write asks first, in a confirm over the
+  window. The list keeps 12 and lives in `shared.json`, and
+  the tab only shows when the folder is one repository. See
+  [docs/git-config.md](docs/git-config.md).
 - **Double-click a branch label** to check it out. A remote branch with no
   local one asks for the local name first.
 - **Right-click** what's under the pointer:
@@ -112,8 +122,7 @@ branch filter, the find bar and the rename. See [Credits](#credits).
   - a tag: delete, push, copy name
   - a commit: add tag, create branch, checkout, cherry pick, revert, merge,
     rebase, reset (soft, mixed, hard), copy hash or subject
-  - uncommitted changes: commit, stash, reset, show them in Herdr's Changes
-    panel
+  - uncommitted changes: commit, stash, reset
 - **Commit details.** Click a commit for its message, hash, parents, author,
   date and changed files. Click a file for its diff.
 - **Live.** It reloads when refs move, refreshes the uncommitted row as you
@@ -154,18 +163,15 @@ When the file open in the Files panel is Markdown, its header shows
 **Preview**, which opens the window on that file. Opening it again replaces the
 window in place instead of stacking a second one.
 
-### Review: Changes and Pull request
+### Review: local changes and Pull request
 
-The review pane is `re-git-graph` with `props.view: "review"`. The graph's
-header has a **Review** button, and `cmd-shift-r` opens the same pane. It opens
-one pane per space, split to the right of the focused pane; pressing again
-focuses the pane that is already open.
-
-**Changes** reviews local git. The header switches between the worktree (the
-uncommitted diff against `HEAD`, untracked files included) and the branch
-(everything since its base, which is `origin/HEAD`, else `main`, else
-`master`). The file list shows status, added and deleted lines, and a dot for
-files you marked reviewed.
+The Git panel has three tabs: **Git**, **Pull request** and **Config**. Local
+changes are the graph's own top row, **Uncommitted changes**: selecting it
+lists the changed files with their added and deleted lines, and a file opens
+its diff. `cmd-shift-r` shows the panel on that row. A layout without a `graph`
+panel still gets the old standalone review pane, opened with
+`props.view: "review"`, which keeps its Changes tab (worktree, or the branch
+against its base) and reviewed marks.
 
 **Pull request** runs `gh pr view` and `gh pr diff` for the current branch.
 When the branch has no pull request it lists the open ones. The tab shows the
@@ -174,7 +180,7 @@ diff view.
 
 `j` and `k` move between files, `r` marks a file reviewed, `s` switches
 unified and split, and Esc goes back to the file list. Reviewed marks are
-local to the pane.
+local to the panel.
 
 Comment, Approve, Request changes and Merge sit in the Pull request header.
 Each opens a card over the pane, names the pull request, and asks again before
@@ -210,8 +216,8 @@ the network.
   stop. It reads the process list once to find Herdr's pid. Nothing leaves the
   machine.
 - **re-tabs** runs no programs.
-- **re-git-graph**'s review view runs `git` for the Changes tab, the same
-  read-only calls as the graph, and `gh` for the Pull request tab: `gh pr view`,
+- **re-git-graph**'s review view runs `git` for its Changes tab and the Config
+  tab, the same read-only calls as the graph, and `gh` for the Pull request tab: `gh pr view`,
   `gh pr diff`, `gh pr list`, `gh pr review` and `gh pr merge`. It uses the
   account you signed in with `gh auth login`. Nothing is fetched from git for
   you; the pull request is shown as GitHub has it.
@@ -259,11 +265,11 @@ herdr-app do pane.split '{"direction":"right","mod":"re-git-graph","props":{"fol
 | Key | Where | Does |
 |-----|-------|------|
 | `cmd-shift-e` | this layout | Toggle the Files panel |
-| `cmd-shift-g` | this layout | Toggle the Graph panel |
+| `cmd-shift-g` | this layout | Toggle the Git panel |
 | `cmd-s` | Files panel | Save the edited file |
 | `cmd-shift-a` | this layout | Cycle Awake: On, Agent, Off |
 | `cmd-shift-m` | this layout | Open the Markdown window |
-| `cmd-shift-r` | this layout | Open or focus the review pane |
+| `cmd-shift-r` | this layout | Show the Git panel on uncommitted changes |
 | `cmd-f` | Graph | Open the find bar |
 
 Editing `keys.json` makes the whole file yours. Herdr then stops updating it,
@@ -289,7 +295,7 @@ so new default shortcuts in later Herdr releases must be added by hand.
 - Not in this version: pull in the graph (a Git Graph row's menu has it),
   interactive rebase, and per-file actions in commit details.
 - The review view's Pull request tab needs `gh`, signed in. Without it the tab
-  says so and the Changes tab still works.
+  says so and the Git tab's uncommitted row still works.
 - A `gh pr diff` larger than Herdr's 30 s or 8 MiB command budget shows the
   error instead of the diff. Review comments are summary bodies only; there are
   no inline line comments.
@@ -323,7 +329,7 @@ layout does.
 - The commit graph (`mods/re-git-graph/`) is
   [herdr-git-graph](https://github.com/rabeeh-ta/herdr-git-graph) by
   [rabeeh-ta](https://github.com/rabeeh-ta), MIT, v0.3.0. It is forked, renamed,
-  and extended with the branch filter, the find bar and the review pane. Bugs in
+  and extended with the branch filter, the find bar and the review tabs. Bugs in
   those additions are this repo's.
 - `mods/re-tabs/`, `mods/re-files/` and `layouts/real-engineer.json` start from
   the `tabs`, `files` and `main` files that ship with Herdr 0.1.14

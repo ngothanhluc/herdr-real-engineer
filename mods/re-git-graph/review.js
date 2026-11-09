@@ -3,7 +3,7 @@
 // it draws its own dialogs so focus and state never leave the pane.
 import { View, div } from "gpui-kit";
 import { v_flex, h_flex, TextView, Textarea, TextareaState, Scrollbar, v_virtual_list } from "gpui-base";
-import { spaces, exec, readTextFile, watchFolder, theme, settings, props } from "herdr";
+import { spaces, panes, focused, exec, readTextFile, watchFolder, theme, settings, props } from "herdr";
 import { parseRows, parsePatch, syntheticAdd, pairRows } from "./review-diff.js";
 import { normalizePr, normalizeList, viewArgs, listArgs, diffArgs, reviewArgs, mergeArgs } from "./review-pr.js";
 
@@ -29,6 +29,15 @@ function safeJson(text, fallback) {
 
 function missingGh(args) {
   return `gh is not installed.\n\nInstall it with: brew install gh\nThen sign in with: gh auth login\n\nThe command was: gh ${args.join(" ")}`;
+}
+
+// The folder the graph is drawn for: the focused terminal's, else the space's.
+// On another machine, `on` names it, as graph.js's location() does.
+function here() {
+  const space = spaces().find((s) => s.active), f = focused();
+  const pane = f?.pane ? panes().find((p) => p.pane === f.pane) : null;
+  const on = f?.pane === null ? (f.terminal?.includes("/") ? f.terminal.split("/")[0] : null) : space?.machine ?? null;
+  return { root: pane?.cwd || f?.cwd || space?.folder || null, on };
 }
 
 function parseStatusZ(out) {
@@ -90,9 +99,15 @@ function decisionText(decision) {
 
 export default class Review extends View {
   init(_props, cx) {
-    this.propRoot = typeof props()?.root === "string" ? props().root : null;
-    this.root = this.propRoot || spaces().find((space) => space.active)?.folder || null;
-    this.on = props()?.on ?? null;
+    const p = _props ?? props() ?? {};
+    this.propRoot = typeof p.root === "string" ? p.root : null;
+    const loc = here();
+    this.root = this.propRoot || loc.root || null;
+    this.on = p.on ?? loc.on;
+    // Inside the Git Graph shell the shell draws the tabs and the card; the
+    // review view is idle until its tab comes to the front.
+    this.embedded = Boolean(p.embedded);
+    this.active = p.active !== false;
     this.state = { tab: "changes", scope: "worktree", file: null, mode: "unified", dialog: null };
     this.changes = { status: "idle", files: [], error: null, truncated: false, hasHead: true, base: "HEAD" };
     this.pr = { status: "idle", data: null, error: null, picker: null, diff: null, branch: null, missing: false };
@@ -112,13 +127,23 @@ export default class Review extends View {
     this.bodyId = `${this.listId}-body`;
     this.pickerId = `${this.listId}-picker`;
     this.handle = cx.focus_handle();
-    this.handle.focus();
+    if (this.active) this.handle.focus();
     this.loadReviewed();
-    this.refreshChanges(cx);
-    this.watch(cx);
+    if (this.active) { this.refreshChanges(cx); this.watch(cx); }
     cx.timer.every(10000, (cx) => {
-      if (!this.closed && this.state.tab === "changes" && !this.ghBusy) this.refreshChanges(cx);
+      if (this.active && !this.closed && this.state.tab === "changes" && !this.ghBusy) this.refreshChanges(cx);
     });
+  }
+
+  // The shell switches to a review tab: take the keyboard and read again.
+  focus(cx) {
+    if (this.closed) return;
+    this.active = true;
+    this.syncRoot(cx);
+    this.handle.focus();
+    this.watch(cx);
+    if (this.state.tab === "changes") this.refreshChanges(cx);
+    else if (this.pr.status === "idle") this.loadPr(cx);
   }
 
   close() {
@@ -132,10 +157,10 @@ export default class Review extends View {
 
   syncRoot(cx) {
     if (this.propRoot) return;
-    const fallback = spaces().find((space) => space.active)?.folder || null;
-    const root = this.propRoot || fallback || null;
-    if (root === this.root) return;
+    const loc = here(), root = loc.root;
+    if (root === this.root && (!root || loc.on === this.on)) return;
     this.root = root;
+    this.on = loc.on;
     this.state.file = null;
     this.diff = null;
     this.changes = { status: "idle", files: [], error: null, truncated: false, hasHead: true, base: "HEAD" };
@@ -156,7 +181,7 @@ export default class Review extends View {
           if (this.debounce) continue;
           this.debounce = cx.timer.after(500, (cx) => {
             this.debounce = null;
-            if (!this.closed && this.root === root && this.state.tab === "changes" && !this.ghBusy) this.refreshChanges(cx);
+            if (this.active && !this.closed && this.root === root && this.state.tab === "changes" && !this.ghBusy) this.refreshChanges(cx);
           });
         }
       } catch {
@@ -570,7 +595,8 @@ export default class Review extends View {
   render(cx) {
     this.syncRoot(cx);
     const t = theme(), m = mono();
-    return v_flex().id(this.id("root")).relative().size_full().min_h(0).rounded(10).overflow_hidden().bg(t.background).border_1().border_color(t.border)
+    return v_flex().id(this.id("root")).relative().size_full().min_h(0).overflow_hidden().bg(t.background)
+      .when(!this.embedded, (e) => e.rounded(10).border_1().border_color(t.border))
       .text_color(t.foreground).text_size(13).track_focus(this.handle)
       .on_key_down((event, cx) => this.keyDown(event, cx))
       .child(this.header(t))
@@ -591,8 +617,9 @@ export default class Review extends View {
       .hover((style) => style.bg(t.hover))
       .on_click(click).child(label);
     return h_flex().h(42).flex_none().px(14).gap(8).items_center().border_b(1).border_color(t.border)
-      .child(tab(this.id("tab-changes"), "Changes", this.state.tab === "changes", (_e, cx) => this.setTab("changes", cx)))
-      .child(tab(this.id("tab-pr"), "Pull request", this.state.tab === "pr", (_e, cx) => this.setTab("pr", cx)))
+      .when(!this.embedded, (el) => el
+        .child(tab(this.id("tab-changes"), "Changes", this.state.tab === "changes", (_e, cx) => this.setTab("changes", cx)))
+        .child(tab(this.id("tab-pr"), "Pull request", this.state.tab === "pr", (_e, cx) => this.setTab("pr", cx))))
       .when(this.state.tab === "changes", (el) => el.child(h_flex().h(26).flex_none().px(2).gap(2).items_center().rounded(6).bg(t.raised)
         .child(scope(this.id("scope-worktree"), "Worktree", this.state.scope === "worktree", (_e, cx) => this.setScope("worktree", cx)))
         .child(scope(this.id("scope-branch"), "Branch", this.state.scope === "branch", (_e, cx) => this.setScope("branch", cx)))))

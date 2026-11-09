@@ -2,10 +2,10 @@
 
 Herdr's main window with a git view and a working file browser. Spaces and
 agents on the left, terminals in the middle, and a side panel on the right that
-the top bar's **Files**, **Changes** and **Graph** buttons open. Files is a tree
+the top bar's **Files** and **Git** buttons open. Files is a tree
 with a right-click menu (copy paths, reveal, open in an editor or a terminal,
 new, rename, duplicate, move to Trash) and a preview you can edit and save with
-`cmd-s`. Graph is a commit graph of the focused terminal's repository, after VS
+`cmd-s`. Git is a commit graph of the focused terminal's repository, after VS
 Code's Git Graph: colored lanes for every branch, labels for branches, remotes
 and tags, uncommitted changes as a dashed row on top, Git Graph's right-click
 menus, a branch filter dropdown and a `cmd-f` find bar.
@@ -15,7 +15,7 @@ menus, a branch filter dropdown and a `cmd-f` find bar.
 ## What you see
 
 The window is Herdr's `main` layout, unchanged except for the top bar, the
-Files panel and the Graph panel. Left to right, on `canvas`, 1px `border`
+Files panel and the Git panel. Left to right, on `canvas`, 1px `border`
 dividers:
 
 - **Sidebar**, 268px (44 to 480), `chrome`: Herdr's brand row (46px), the
@@ -24,14 +24,14 @@ dividers:
 - **Work column**, top to bottom:
   - **Top bar**, 42px, `chrome`, bottom border, draggable window area. Herdr's
     tab bar (tabs, the `+` button) and on the right the panel buttons:
-    **Files**, **Changes**, **Graph**. Each is 26px tall, 8px side padding,
+    **Files**, **Git**. Each is 26px tall, 8px side padding,
     radius 6, a 14px icon and a 12px label, `muted` on `chrome`, and
-    `foreground` on `selected` while its panel shows. Graph's icon is
+    `foreground` on `selected` while its panel shows. Git's icon is
     `mods/re-git-graph/icons/graph.svg`.
   - **Body**, a row with 8px padding and 8px gap: the panes (radius 10, 1px
     `border`, 1px `accent` focus, a 30px pane header), and the **side panel**,
-    368px (280 to 900), hidden at start. It is a stack of three: Files,
-    Changes (Herdr's), Graph.
+    368px (280 to 900), hidden at start. It is a stack of two: Files and
+    Git.
   - **Status bar**, 28px, Herdr's.
 
 ### Files panel
@@ -66,15 +66,14 @@ folder and file icons, at most 500 entries per folder and 5,000 in all). Added:
   Folder, Rename file/folder, Move file/folder to Trash, Editor command, and
   Unsaved changes (Cancel, Discard, Save).
 
-### Graph panel
+### Git panel
 
 One column on `background`, radius 10, 1px `border`, base type 12.5px. Top to
 bottom:
 
 - **Header**, 42px, 14px side padding, bottom border. The tool's name at 13px
-  semibold: "Git" for a repository, "Git Graph" for a folder of them (see
-  **Git Graph** below). A repository opened from the Git Graph list shows a back
-  chevron and "Git Graph" (back to the list), then the repository's name as a
+  semibold: "Git". A repository opened from the Git list shows a back chevron
+  and "Git" (back to the list), then the repository's name as a
   chip (folder icon, `raised`, `selected` while open) that drops the list's
   rows down under the header, over the graph: `raised`, at most 260px with
   scrolling, the open repository `selected` with its name in `accent`, every
@@ -85,12 +84,12 @@ bottom:
   with a commit icon. On the right, 24px icon buttons in `muted`: Find (a
   magnifier, `selected` while the find bar is open; only when the history
   shows), Fetch (arrow down, only when the repo has remotes; it says
-  `Fetching…` while running) and Refresh, and Settings (a gear) on the Git Graph
+  `Fetching…` while running) and Refresh, and Settings (a gear) on the Git
   list and when a folder holds none. When a newer release is out, an `accent`
-  dot and **Update Graph** sit before them. No commit count, as in Git Graph.
-- **Git Graph**, when the folder isn't a repository but holds some, after
+  dot and **Update Git** sit before them. No commit count, as in Git Graph.
+- **Git**, when the folder isn't a repository but holds some, after
   [upstream manygit](https://github.com/rabeeh-ta/manygit)'s repository pane, in place of
-  the toolbar and table. The header reads `Git Graph`, `N repos` in `dim`. Rows
+  the toolbar and table. The header reads `Git`, `N repos` in `dim`. Rows
   grouped by the folder they're in (a 26px `dim` 11px heading, `group/`, `./`
   for the top; no headings when every repo is at the top), each 34px, indented
   28px under a heading (14px otherwise): the name at 11.5px (`accent` for the
@@ -102,7 +101,7 @@ bottom:
   has diverged), nothing when it's in sync; then `not pushed` in `ansi1` (a
   remote, but the branch has no upstream; nothing on a detached HEAD),
   `no remote` `dim`, `upstream gone` `ansi1`, `…` while loading. A click opens
-  the repository's graph with everything above; "‹ Git Graph" or `Esc` (with
+  the repository's graph with everything above; "‹ Git" or `Esc` (with
   nothing else open) returns to the list.
   **Right-click a row**: its remotes (`git config --get-regexp
   '^remote\..*\.url$'`) and the machine's agents (`knownAgents`, kept per
@@ -185,7 +184,7 @@ bottom:
     meanwhile); a click does the same.
 - **Details**, 320px under the list when a commit is selected, top border. A
   32px bar with `Commit <8 chars>` (or `Uncommitted changes` and an
-  `Open Changes` link) and a `×`. Below, scrolling: the subject semibold, then
+  and a `×`. Below, scrolling: the subject semibold, then
   label/value rows at 11.5px (64px `dim` labels): Commit (full hash,
   monospace, `accent`), Parents, Author `name <email>`, Date
   (`2026-10-28 12:09 · 2d`). These show the moment the commit is clicked, with
@@ -227,15 +226,15 @@ label when it can't start. On a system that isn't macOS the row reads
 28px rows: the file name, its folder in `dim` on the right. Choosing one shows
 `←`, the file name and the rendered document.
 
-### Review pane
+### Review tabs
 
-A pane split to the right of the focused pane. Its 42px header holds
-**Changes** and **Pull request**; on Changes a Worktree/Branch segmented toggle
-follows, and `↻` sits at the right end. The body is a 30px file list with a
-status letter, `+add` and `−del`, and a `done` dot for reviewed files, or a diff
-with 20px rows, a 34px number column, `ansi2` for added and `ansi1` for
-removed lines. The Pull request tab adds a metadata row and a conversation
-section above the same file list.
+The Git panel's 34px tab row holds **Git** and **Pull request**. The Git tab is
+the graph, with local changes in its **Uncommitted changes** row: selecting it
+lists the changed files and a file opens its diff. The Pull request tab has a
+42px header with `↻` at the right end, a metadata row and a conversation
+section above a 30px file list with a status letter, `+add` and `−del`, or a
+diff with 20px rows, a 34px number column, `ansi2` for added and `ansi1` for
+removed lines.
 
 ## How it behaves
 
@@ -272,34 +271,67 @@ section above the same file list.
   no resize API, so the mod reopens its own overlay with the same `key` and the
   new width, and keeps the choice in `shared("re-markdown.width")`.
 
-### Review pane
+### Review tabs
 
-- `cmd-shift-r` (`re-tabs.review`) keeps one pane per space: it focuses the
-  pane whose `mod` is `re-git-graph` and `props.view` is `"review"`, else
-  splits right with `props: { root, view: "review" }`, resolved from the
-  focused terminal before the pane takes focus. The graph header's **Review**
-  button does the same.
-- Changes reads `git status --porcelain=v1 -z` and `git diff HEAD`, or
-  `git diff <base>...HEAD` for Branch. The base is `origin/HEAD`, else `main`,
-  else `master`. Untracked files are read and shown as all-added.
+- `cmd-shift-r` (`re-tabs.review`) shows the Git panel and sets
+  `shared("re-git-graph.tab")` to `{ tab: "changes", at }`. The panel's shell
+  reads it on the next render, switches to the Git tab and selects the graph's
+  **Uncommitted changes** row. `re-tabs.config` asks for `{ tab: "config" }`
+  the same way. A layout with no `graph` block falls back to one review pane
+  per space: focus the pane whose `mod` is `re-git-graph` and `props.view` is
+  `"review"`, else split right with `props: { root, view: "review" }`.
+- The shell (`shell.js`) owns the tabs. The graph starts on screen; the Pull
+  request view is made with the shell and goes `active = false` when Git comes
+  back, so its timers and folder watcher do not read while hidden.
+- The Git tab's uncommitted row reads `git status --porcelain=v1 -z` and
+  `git diff HEAD`; selecting a file shows its diff. Branch scope and reviewed
+  marks stay in the standalone review pane (a layout without a `graph` block),
+  which reads `git diff <base>...HEAD` for Branch. The base is `origin/HEAD`,
+  else `main`, else `master`. Untracked files are read and shown as all-added.
 - Pull request runs `gh pr view` and `gh pr diff`; with no PR for the branch it
   lists `gh pr list`. Comment, Approve, Request changes and Merge open a card
-  in the pane and run `gh pr review` / `gh pr merge`. Merge offers Merge,
+  in the panel and run `gh pr review` / `gh pr merge`. Merge offers Merge,
   Squash or Rebase and an optional branch delete. A failure keeps the card open
   with `gh`'s message.
 - `j`/`k` move between files, `r` toggles reviewed, `s` switches unified and
   split, Esc goes back. Reviewed marks live in `localStorage` per root, scope
   and base.
 
+### Config tab
+
+- The shell's third tab, and only when the folder is one repository: with no
+  repository, or with the repository list, `tabsShown()` leaves it out and the
+  shell falls back to the Git tab. When it comes to the front, `open(root, on,
+  cx)` in `config-view.js` reads the current folder. The panel width is the
+  only limit; the view is built for 368px.
+- One `git --no-optional-locks config --list -z --show-scope` reads the folder.
+  `config.js` keeps `user.name` and `user.email` and the scope each came from,
+  so `This repository` reads `Name`, `Email` and `Local` / `Global` / `System`.
+- A 32px header shows the folder and `↻`, then the current pair, then the saved
+  pairs (name above email, a `✓` on the one in use), then two boxes and `Set`.
+  Picking a pair or pressing `Set` opens `confirm.js` as a dialog
+  (`props.role === "confirm"`): the pair, the folder, Cancel and Set identity.
+  Confirming runs `git config --local user.name` and `git config --local
+  user.email`, remembers the pair, toasts it, and moves
+  `shared("re-git-graph.identity")`; the tab reloads on that stamp, so a pair
+  written from the confirm shows up in the list. A failure keeps `git`'s
+  message in the confirm.
+- The saved pairs live in `shared("re-git-graph.identities")`, newest first,
+  repaired and capped at 12 by `config.js`. The identity a repository already
+  uses joins the list when the tab opens.
+- Only the identity is set. Every other setting stays `git config` or an
+  editor. See `docs/git-config.md` for the read, the scopes and the limits.
+
 ### Top bar
 
-- **Graph** shows when the layout has a node with id `graph`. Files and Changes
-  show as Herdr's do (`shared("workspace.panels")`, both by default).
+- **Git** shows when the layout has a node with id `graph`. Files shows as
+  Herdr's does (`shared("workspace.panels")`). Herdr's Changes button is
+  filtered out.
 - Clicking a panel button: if the panel shows that view, hide the panel;
   otherwise select it in `panel-body` and show the panel.
 - Key commands `re-tabs.files` and `re-tabs.graph` do the same (bound to
-  `cmd-shift-e` and `cmd-shift-g` in `layout:real-engineer`).
-  `re-tabs.changes` works too, unbound.
+  `cmd-shift-e` and `cmd-shift-g` in `layout:real-engineer`). `re-tabs.config`
+  shows the panel on the Config tab, unbound.
 
 ### Files panel
 
@@ -333,7 +365,7 @@ section above the same file list.
   and goes back, Discard goes back, Cancel stays. Switching to another pane's
   folder keeps the edits, and coming back shows them.
 
-### Graph panel
+### Git panel
 
 - **Which repository**: the focused pane's live folder (`panes()[i].cwd`),
   else `focused().cwd`, else the space's folder, on the space's machine.
@@ -411,9 +443,9 @@ section above the same file list.
   commit menu (Add tag, Create branch, Checkout, Cherry pick, Revert, Merge,
   Rebase, Reset, Copy hash, Copy subject; Checkout, Cherry pick, Merge and
   Rebase left out on HEAD); on the uncommitted row: Commit, Stash, Reset
-  uncommitted changes, Show in Changes panel. Push needs a remote.
+  uncommitted changes. Push needs a remote.
 - **Actions** run as argv, stopping at the first failure. With no dialog
-  (checkout of a local branch, copy, show Changes) the menu runs it, then
+  (checkout of a local branch, copy) the menu runs it, then
   closes. Otherwise a dialog asks: create branch, add tag (optional message
   makes it annotated), rename, delete (force), delete remote
   (`push <remote> --delete <branch>`), delete tag, merge (`--no-edit`,
@@ -428,7 +460,7 @@ section above the same file list.
 - **Fetch** runs `git fetch --all` and reloads.
 - **Update check**: at most once a day, one `fetch` of
   `api.github.com/repos/ngothanhluc/herdr-real-engineer/releases/latest`. A
-  `tag_name` newer than `VERSION` (in `update.js`) shows **Update Graph**; its window
+  `tag_name` newer than `VERSION` (in `update.js`) shows **Update Git**; its window
   shows the release notes, Copy prompt, Release page, Later and Stop checking.
 
 ## Built from
@@ -448,17 +480,19 @@ section above the same file list.
 - `mods/re-git-graph/review.js`, `review-diff.js`, `review-pr.js`: the review
   view, written here. The two parsers import nothing from Herdr, so
   `tests/review-diff.test.mjs` and `tests/review-pr.test.mjs` run them under
-  Node. `main.js` picks the view with `props.view === "review"`.
+  Node. `shell.js` puts the graph and the review view in one tabbed panel;
+  `main.js` still picks a standalone review pane with `props.view === "review"`.
 - `mods/re-tabs/`: `herdr-app do mod.clone '{"name":"tabs","as":"re-tabs"}'``
   (`mod.json` `cloned_from: { name: "tabs", version: "0.1.14" }`), then:
   - a module-level `togglePanel(id)`: `layout.hide {id: "panel"}` when the
     panel shows `id`, else `layout.select {stack: "panel-body", child: id}`
     and `layout.show {id: "panel"}`. The panel buttons' `on_click` calls it.
   - `init(_props, cx)` spawns a `nextCommand()` loop that calls
-    `togglePanel(c)` when the layout has a node with id `c`.
-  - `enabled` gets `"graph"` appended when `find(root, "graph")`, and a
-    `panelButton("graph", "Graph", "mods/re-git-graph/icons/graph.svg")` after
-    Changes.
+    `togglePanel(c)` when the layout has a node with id `c`, and
+    `openPanel("config")` for the `config` command.
+  - `enabled` filters out `"changes"`, appends `"graph"` when
+    `find(root, "graph")`, and draws a `panelButton("graph", "Git",
+    "mods/re-git-graph/icons/graph.svg")` after Files.
   - Its own `mods/re-tabs/win-*.svg` paths for the Windows buttons.
 - `mods/re-files/`: a clone of `files` (`cloned_from` 0.1.14). `main.js`
   keeps Herdr's panel and adds `props().role`: none, the panel; `"menu"`
@@ -513,9 +547,9 @@ section above the same file list.
     element around it records each left press (`click_count`,
     `local_position.x`). Labels are drawn at computed widths, so `x` names the
     label part exactly.
-  - Herdr's `mods/changes/changes.svg` for Show in Changes; its own icons in
-    `icons/` (Lucide-style, ISC notice there). Commands: `layout.select` /
-    `layout.show` (`panel-body` → `changes`, `panel`). Programs: `git`, and
+  - Its own icons in `icons/` (Lucide-style, ISC notice there). Commands:
+    `layout.select` / `layout.show` (`panel-body` → `files` or `graph`,
+    `panel`). Programs: `git`, and
     `find` and `env` for Git Graph, through `exec(…, { cwd, on })`. Network:
     the update check's `fetch`.
 - `keys.json`: `layout:real-engineer` (`cmd-shift-e` → `re-tabs.files`,
@@ -596,8 +630,8 @@ section above the same file list.
   Herdr 0.1.12 and later zoom lists themselves; before that, `paint_path`
   took screen pixels and the lines multiply by the zoom. The graph asks
   `updates().app.version` once.
-- Show in Changes and the panel buttons assume the `panel` / `panel-body`
-  ids of Herdr's `main` layout.
+- The panel buttons assume the `panel` / `panel-body` ids of Herdr's `main`
+  layout.
 - Herdr's `exec` stops a command after 30 s: a slow fetch, pull, push or
   pre-commit hook fails there.
 - Tested on Herdr app 0.1.14 on macOS. Untested: Linux, Windows. Git Graph needs
@@ -617,15 +651,15 @@ section above the same file list.
 - `cmd-shift-m` opens the Markdown window on the focused pane's folder; a file
   renders, links open, and Esc closes it. In a repository with an untracked
   `.md`, the file appears after `git add`.
-- `cmd-shift-r` opens the review pane beside the terminal; pressing it again
-  focuses that pane instead of adding one. Changes lists the worktree, Branch
-  lists the branch's commits against its base, and opening a file shows its
-  diff. In a branch with a PR, the Pull request tab shows its body, comments
+- `cmd-shift-r` shows the Git panel on the graph's uncommitted row; pressing it
+  again keeps that panel in front. Selecting a file shows its diff. The
+  standalone review pane still lists the worktree or the branch against its
+  base. In a branch with a PR, the Pull request tab shows its body, comments
   and diff; a review or merge card names the PR and reports `gh`'s error when
   it fails.
-- The top bar shows Files, Changes, Graph. Clicking Graph opens the panel on
-  the graph; clicking it again closes it. `cmd-shift-g` and `cmd-shift-e` do
-  the same.
+- The top bar shows Files and Git. Clicking Git opens the panel on the graph;
+  clicking it again closes it. `cmd-shift-g` and `cmd-shift-e` do the same.
+  Herdr's Changes button is gone; local changes are the uncommitted row.
 - Right-clicking a file in Files shows its 11 items in three groups; New File creates and
   opens the file; Delete asks, then the file is in the Trash.
 - Editing a local file shows `●`; `cmd-s` saves it and clears the dot.

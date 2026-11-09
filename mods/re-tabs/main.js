@@ -1,7 +1,7 @@
 // Modified copy of Herdr's `tabs` mod (app 0.1.13, Apache-2.0,
 // github.com/herdrdev/herdr-app). Changed: renamed to re-tabs, a Graph button,
 // panel toggles that keep the space's choice, the re-tabs.* key commands, and
-// one review pane per space. See README.md.
+// Review in the Git panel: the uncommitted row, plus the Pull request and Config tabs. See README.md.
 import { View, div, svg, image } from "gpui-kit";
 import { h_flex } from "gpui-base";
 import { spaces, panes, focused, run, openOverlay, theme, window, shared, setShared, layout, settings, nextCommand } from "herdr";
@@ -21,12 +21,24 @@ function togglePanel(id) {
   else { run("layout.select", { stack: "panel-body", child: id }); run("layout.show", { id: "panel" }); }
 }
 
-// One review pane per space: focus the open one, else split beside the focused pane.
-// The worktree is resolved now, because the pane can't read it once it has focus.
-// The opener records the new pane in shared state: a graph pane and a review pane
-// share a mod name, so panes() alone can't tell them apart.
+// Show the Git panel and ask it for one of its tabs. The shell applies the tab
+// after its next render.
+function openPanel(tab) {
+  run("layout.select", { stack: "panel-body", child: "graph" });
+  run("layout.show", { id: "panel" });
+  setShared("re-git-graph.tab", { tab, at: Date.now() });
+}
+
+// `re-tabs.review` (cmd-shift-r) shows the Git panel on the uncommitted row. A
+// layout without a `graph` block keeps the old behavior: one review pane per
+// space, split beside the focused pane.
 function openReview(cx) {
-  const f = focused(), space = spaces().find((s) => s.active);
+  const space = spaces().find((s) => s.active);
+  if (find(layout(), "graph")) {
+    openPanel("changes");
+    return;
+  }
+  const f = focused();
   const pane = f?.pane ? panes().find((p) => p.pane === f.pane) : null;
   const tabs = new Set((space?.tabs ?? []).map((t) => t.id));
   const saved = shared("re-git-graph.reviewPane");
@@ -45,8 +57,8 @@ export default class Tabs extends View {
   init(_props, cx) {
     this.pressed = null;
     this.panels = JSON.parse(localStorage.getItem("panels") ?? "{}");
-    // keys.json: "re-tabs.files" / "re-tabs.graph" toggle that panel, "re-tabs.review" opens review.
-    cx.spawn(async (cx) => { for (;;) { const c = await nextCommand(); if (c === "review") openReview(cx); else if (find(layout(), c)) togglePanel(c); } });
+    // keys.json: "re-tabs.files" / "re-tabs.graph" toggle that panel, "re-tabs.review" opens the uncommitted row, "re-tabs.config" the Config tab.
+    cx.spawn(async (cx) => { for (;;) { const c = await nextCommand(); if (c === "review") openReview(cx); else if (c === "config") openPanel("config"); else if (find(layout(), c)) togglePanel(c); } });
   }
 
   // The side panel is remembered per space: switching shows that space's choice
@@ -109,7 +121,10 @@ export default class Tabs extends View {
       ? Math.max(10, (root.traffic_lights[0] + 64) / settings().zoom - (sidebar?.hidden ? 0 : sidebar?.size?.px ?? 0))
       : 10;
     const panel = find(root, "panel"), body = find(root, "panel-body");
-    const enabled = [...(shared("workspace.panels") ?? ["files", "changes"]), ...(find(root, "graph") ? ["graph"] : [])];
+    // Herdr's Changes panel is gone from this layout; local changes are the
+    // Git panel's uncommitted row.
+    const enabled = [...new Set(["files", ...(shared("workspace.panels") ?? [])])].filter((id) => id !== "changes");
+    if (find(root, "graph")) enabled.push("graph");
     this.syncPanel(space, panel, body, enabled);
     const panelButton = (id, label, icon) => {
       const on = panel && !panel.hidden && body?.active === id;
@@ -124,8 +139,7 @@ export default class Tabs extends View {
       .child(h_flex().id("tab-scroll").flex_1().min_w(0).h_full().items_center().gap(3).overflow_x_scrollbar().children(shown.map(item)))
       .child(button("tab-new", "+", () => openOverlay({ mod: "new-menu", kind: "popup", width: 250, height: 512 })))
       .when(enabled.includes("files"), el => el.child(panelButton("files", "Files", "mods/files/file.svg")))
-      .when(enabled.includes("changes"), el => el.child(panelButton("changes", "Changes", "mods/changes/changes.svg")))
-      .when(enabled.includes("graph"), el => el.child(panelButton("graph", "Graph", "mods/re-git-graph/icons/graph.svg")))
+      .when(enabled.includes("graph"), el => el.child(panelButton("graph", "Git", "mods/re-git-graph/icons/graph.svg")))
       .when(w?.buttons, el => el.child(button("minimize", w.platform === "windows" ? svg("mods/re-tabs/win-min.svg").size(16) : "−", () => run("window.minimize")))
         .child(button("maximize", w.platform === "windows" ? svg(`mods/re-tabs/${w.maximized ? "win-restore" : "win-max"}.svg`).size(16) : "□", () => run("window.maximize")))
         .child(button("close-window", w.platform === "windows" ? svg("mods/re-tabs/win-close.svg").size(16) : svg("mods/pane/close.svg").size(13), () => run("window.close"))));

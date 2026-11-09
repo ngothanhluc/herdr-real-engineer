@@ -16,6 +16,11 @@ changed. Changes made here:
   local and remote branches.
 - A find bar on `cmd-f`: matches are highlighted, never hidden, and Enter
   steps through them.
+- The Pull request tab beside the graph, and local changes in the graph's own
+  uncommitted row (`shell.js`, `review.js`).
+- A Config tab (`config.js`, `config-view.js`, `confirm.js`): sets the
+  repository's `user.name` and `user.email` from a list of pairs used before,
+  after a confirm.
 
 Bugs in those additions are this repository's; bugs in the rest belong
 upstream, and are worth an issue there.
