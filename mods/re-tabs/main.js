@@ -23,8 +23,8 @@ function togglePanel(id) {
 
 // One review pane per space: focus the open one, else split beside the focused pane.
 // The worktree is resolved now, because the pane can't read it once it has focus.
-// The pane records itself in shared state: a graph pane and a review pane share
-// a mod name, so panes() alone can't tell them apart.
+// The opener records the new pane in shared state: a graph pane and a review pane
+// share a mod name, so panes() alone can't tell them apart.
 function openReview(cx) {
   const f = focused(), space = spaces().find((s) => s.active);
   const pane = f?.pane ? panes().find((p) => p.pane === f.pane) : null;
