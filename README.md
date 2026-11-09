@@ -151,6 +151,10 @@ block instead of a horizontal rule. The file reloads while it is open. Esc or
 the `×` closes it, and `←` returns to the list. Another mod can hand it a file
 with `props: { path }`.
 
+When the file open in the Files panel is Markdown, its header shows
+**Preview**, which opens the window on that file. Opening it again replaces the
+window in place instead of stacking a second one.
+
 ### re-review: Changes and Pull request
 
 `cmd-shift-r` opens one review pane per space, split to the right of the

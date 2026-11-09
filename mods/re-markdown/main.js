@@ -72,6 +72,8 @@ class Markdown extends View {
     this.on = on;
     this.handle = cx.focus_handle();
     this.handle.focus();
+    // A window doesn't take the keyboard when it opens; focus again once it is mounted.
+    cx.timer.after(50, () => { if (!this.closed) this.handle.focus(); });
     this.load(cx);
     // watchFolder is local only, so another machine gets a slow poll instead.
     if (on) this.poll = cx.timer.every(3000, (cx) => { if (!this.closed) this.refresh(cx); });

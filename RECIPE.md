@@ -265,6 +265,9 @@ section above the same file list.
 - Reloads on `watchFolder`, or every 3 seconds in a space on another machine.
   Esc or `×` closes it; `←` returns to the list; `props: { path }` opens one
   file directly.
+- The Files panel header shows **Preview** when its open file is Markdown. It
+  calls `openOverlay` with the same `key`, so a second click replaces the
+  window in place.
 
 ### Review pane
 

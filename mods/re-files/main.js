@@ -5,7 +5,7 @@
 // A lazy file browser for the focused pane's folder, with bounded read-only previews.
 import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex, Editor, EditorState } from "gpui-base";
-import { spaces, panes, focused, exec, readTextFile, watchFolder, theme, settings, window, props, shared } from "herdr";
+import { spaces, panes, focused, exec, readTextFile, watchFolder, theme, settings, window, props, shared, openOverlay } from "herdr";
 import { Menu, openMenu } from "./menu.js";
 import { Dialog } from "./dialog.js";
 import { track, dirty, leave, listen, conflictBar } from "./edit.js";
@@ -180,6 +180,12 @@ class Files extends View {
 
   menuContext() { return { root: this.root, on: this.on }; }
 
+  // The same window key replaces an open preview, so this never stacks two.
+  previewMarkdown() {
+    if (!this.file || !this.root) return;
+    openOverlay({ mod: "re-markdown", kind: "window", width: 560, height: 0.9, key: "re-markdown", props: { path: `${this.root}/${this.file}` } });
+  }
+
   // A menu action changed files: reload, open the folders down to what it made, and open a new file.
   changed(cx) {
     const change = shared("re-files.changed");
@@ -202,6 +208,9 @@ class Files extends View {
         .when(Boolean(this.file), el => el.child(div().id("files-back").w(20).cursor_pointer().text_color(t.muted).on_click((_e, cx) => leave(this, cx)).child("←")))
         .child(div().font_semibold().child("Files"))
         .child(div().flex_1().min_w(0).truncate().text_right().text_size(12).text_color(t.dim).child(this.file ?? this.root?.split(/[\\/]/).pop() ?? ""))
+        .when(Boolean(this.file && /\.(md|markdown|mdx)$/i.test(this.file)), el => el.child(div().id("files-preview").h(24).px(8).flex_none().flex().items_center().rounded(6)
+          .bg(t.raised).border_1().border_color(t.input).text_size(11.5).cursor_pointer().hover(s => s.opacity(0.88))
+          .on_click(() => this.previewMarkdown()).child("Preview")))
         .when(dirty(this), el => el.child(div().flex_none().text_color(t.foreground).child("●"))))
       .when(Boolean(this.file && this.edit?.conflict), el => el.child(conflictBar(this, t)))
       .when(!this.file, el => el.child(v_flex().id("files-tree").flex_1().min_h(0).overflow_y_scrollbar().p(6).children(this.rows("", 0, [], t))
