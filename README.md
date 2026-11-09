@@ -85,12 +85,12 @@ branch filter, the find bar and the rename. See [Credits](#credits).
   hex characters) match. Rows are never hidden. Enter and shift-Enter step
   through the matches. Stepping past the last loaded match loads more history,
   up to 2000 commits.
-- **Many repositories (Manygit).** Focus a terminal in a folder that holds
+- **Many repositories (Git Graph).** Focus a terminal in a folder that holds
   repositories, and the panel lists them, grouped by folder, after
-  [manygit](https://github.com/rabeeh-ta/manygit). Each row shows its branch,
+  [upstream manygit](https://github.com/rabeeh-ta/manygit). Each row shows its branch,
   uncommitted changes, and whether it's ahead (↑) or behind (↓) its upstream,
   not pushed, or has no remote. Click one for its graph. Its name in the header
-  drops the list down to switch to another, and **‹ Manygit** goes back.
+  drops the list down to switch to another, and **‹ Git Graph** goes back.
   Right-click one for a new agent or terminal tab in it, then pull, push or
   fetch, commit, stash or reset its changes, open its remote's page, or copy
   its path. It searches 3 folders deep (1 to 5 in the gear's settings), and
@@ -280,13 +280,13 @@ so new default shortcuts in later Herdr releases must be added by hand.
   machine it fails unless that machine has it too.
 - Find matches a commit's subject line, author, branch and tag names, and hash
   prefix. It doesn't search message bodies or changed files.
-- Manygit needs `find` and `env`, so it works on macOS and Linux, not Windows.
+- Git Graph needs `find` and `env`, so it works on macOS and Linux, not Windows.
 - Herdr stops a command after 30 seconds, so a fetch, pull or push over a slow
   network, or a slow pre-commit hook, can fail there.
 - A very large history loads slower the first time if the repository has no
   commit-graph file. `git commit-graph write --reachable` (or
   `git maintenance start`) in that repository fixes it.
-- Not in this version: pull in the graph (a Manygit row's menu has it),
+- Not in this version: pull in the graph (a Git Graph row's menu has it),
   interactive rebase, and per-file actions in commit details.
 - The review view's Pull request tab needs `gh`, signed in. Without it the tab
   says so and the Changes tab still works.

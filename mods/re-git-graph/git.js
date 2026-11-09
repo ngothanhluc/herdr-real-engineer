@@ -199,7 +199,7 @@ const remoteChoice = (ctx) => ({ id: "remote", label: "Remote", value: ctx.remot
 const mergeNote = (a) => (a.merge ? " It's a merge commit: its changes against its first parent are used." : "");
 
 // The dialog an action asks first, or null when it runs at once.
-// A Manygit row's menu. Herdr's own first: an agent's tab (most picked first, as
+// A Git Graph row's menu. Herdr's own first: an agent's tab (most picked first, as
 // its + menu) or a terminal in the repository. Then what the row's ↑/↓ asks for,
 // its uncommitted changes, and its links.
 function repoMenu(r, ctx) {
@@ -328,7 +328,7 @@ export function commandsFor(a, v = {}, ctx = {}) {
     case "pushTag": return [["push", v.remote, `refs/tags/${a.name}`]];
     // The message is -m's own argument, so one starting with "-" stays a message.
     case "commit": return [...(v.all ? [["add", "--all"]] : []), ["commit", "-m", message]];
-    // Fast-forward only, as manygit pulls: never a merge or a rebase.
+    // Fast-forward only, as Git Graph pulls: never a merge or a rebase.
     case "pull": return [["pull", "--ff-only", "--quiet"]];
     case "stash": return [["stash", "push", ...(v.untracked ? ["--include-untracked"] : []), ...(message ? ["-m", message] : [])]];
     case "resetUncommitted": return [["reset", `--${v.mode}`, "HEAD"]];

@@ -12,7 +12,7 @@ export async function perform(action, values, ctx, { toast = true } = {}) {
       return result;
     }
     notify({ title: doneText(action, values), level: "success", timeout: 3000 });
-    // A Manygit row that failed in Fetch all reads as fetched again.
+    // A Git Graph row that failed in Fetch all reads as fetched again.
     if (action.type === "fetch") setShared("re-git-graph.fetched", { root: ctx.root, at: Date.now() });
     return { ok: true };
   } catch (e) {

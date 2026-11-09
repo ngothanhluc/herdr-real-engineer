@@ -1,10 +1,10 @@
-// Manygit: the repositories under a folder that isn't one itself, after
+// Git Graph: the repositories under a folder that isn't one itself, after
 // github.com/rabeeh-ta/manygit. Pure functions, so the tests run them against
 // real folders; graph.js does the exec.
 import { READ } from "./git.js";
 
 export const DEPTH = { min: 1, max: 5, default: 3 };
-// Never descended into: manygit's list, plus every hidden folder and macOS's
+// Never descended into: Git Graph's list, plus every hidden folder and macOS's
 // Library (huge, and nobody keeps repositories there).
 const PRUNE = ["node_modules", "vendor", "venv", "__pycache__", "dist", "build", "target", "site-packages", "Library"];
 
@@ -32,7 +32,7 @@ export function findArgs(root, depth) {
 }
 
 // find's output (one .git per line) as repositories, grouped by the folder
-// they sit in under root, as manygit does. An unreadable subfolder makes find
+// they sit in under root, as Git Graph does. An unreadable subfolder makes find
 // exit 1, so its output counts whatever the exit code.
 export function parseFound(root, stdout, max = 500) {
   const base = root.replace(/[/\\]+$/, "");
@@ -43,7 +43,7 @@ export function parseFound(root, stdout, max = 500) {
   }).sort((a, b) => (a.group === b.group ? a.name.localeCompare(b.name) : a.group.localeCompare(b.group)));
 }
 
-// Everything a row shows, in one git call: manygit needs six to eight.
+// Everything a row shows, in one git call: Git Graph needs six to eight.
 export const REPO_STATUS = [...READ, "status", "--porcelain=v2", "--branch", "-z", "--no-renames", "--untracked-files=normal"];
 
 export function parseRepoStatus(stdout) {
@@ -67,7 +67,7 @@ export function parseRepoStatus(stdout) {
   return s;
 }
 
-// A background fetch, as manygit runs it: saved credentials and SSH's own
+// A background fetch, as Git Graph runs it: saved credentials and SSH's own
 // configuration still work, but nothing may stop to ask for a login. Git tries
 // askpass before GIT_TERMINAL_PROMPT, so an empty GIT_ASKPASS goes with it.
 export const FETCH = ["GCM_INTERACTIVE=0", "GIT_TERMINAL_PROMPT=0", "GIT_ASKPASS=", "git", "fetch", "--quiet"];
@@ -93,10 +93,10 @@ export function webUrl(url) {
   return m ? `https://${m[1]}/${m[2]}` : null;
 }
 
-// The newest tag (by creation date), as manygit's `t` shows: only read while Show tags is on.
+// The newest tag (by creation date), as Git Graph's `t` shows: only read while Show tags is on.
 export const LATEST_TAG = [...READ, "for-each-ref", "--count=1", "--sort=-creatordate", "--format=%(refname:short)", "refs/tags"];
 
-// What a row says of its upstream (manygit's states; drawn in Herdr's colors).
+// What a row says of its upstream (Git Graph's states; drawn in Herdr's colors).
 export function syncOf(st, fetchError) {
   if (!st) return { kind: "loading", text: "…" };
   if (fetchError) return { kind: "error", text: "fetch failed" };

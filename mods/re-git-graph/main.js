@@ -10,7 +10,7 @@ import Review from "./review.js";
 
 // One mod, several roles: the graph (a panel or a pane), the review pane
 // (`props.view`), and over the window the right-click menu, the dialogs its
-// actions ask first, the update window, the Manygit settings and the branch
+// actions ask first, the update window, the Git Graph settings and the branch
 // filter (props.role).
 export default class GitGraph extends View {
   init(_props, cx) {

@@ -70,7 +70,7 @@ const SEEN = 24, DETAILS = 200;
 const keep = (map, key, value, max) => { map.delete(key); map.set(key, value); if (map.size > max) map.delete(map.keys().next().value); };
 
 // What belongs to one folder: a new folder starts from this, and leaving one keeps it.
-// workspace: the repositories under a folder that isn't one (Manygit), their
+// workspace: the repositories under a folder that isn't one (Git Graph), their
 // statuses, and the one opened from that list (its graph shows until Back).
 const folderState = () => ({
   state: "loading", root: null, on: null, cwd: null, error: null,
@@ -120,7 +120,7 @@ async function readRepo(path, on, tags) {
   return st;
 }
 
-// Runs fn over items, at most `limit` at a time (manygit's 8).
+// Runs fn over items, at most `limit` at a time (Git Graph's 8).
 async function pool(items, limit, fn) {
   let next = 0;
   await Promise.all(Array.from({ length: Math.min(limit, items.length) }, async () => { while (next < items.length) await fn(items[next++]); }));
@@ -139,9 +139,9 @@ export class Graph {
     this.watchToken = 0; this.seenChange = shared("re-git-graph.changed");
     this.cols = withDefaults(); this.drag = null;
     this.seen = new Map(); this.commitDetails = new Map();
-    // Fetch all: its progress for one Manygit folder, and each repository's last failure.
+    // Fetch all: its progress for one Git Graph folder, and each repository's last failure.
     this.fetchAll = null; this.fetchErrors = new Map();
-    // Manygit's .git watchers, one per repository, kept while it's listed (see watchRepos).
+    // Git Graph's .git watchers, one per repository, kept while it's listed (see watchRepos).
     this.watched = new Set();
     // Herdr's agents per machine, for a row's "New … tab" (as its + menu lists them).
     this.agents = new Map();
@@ -152,7 +152,7 @@ export class Graph {
     cx.spawn(async (cx) => { for (;;) { if (await nextCommand() === "find") { this.openFind(cx); cx.notify(); } } });
     cx.timer.after(1500, (cx) => this.warm(cx));
     // Remote spaces can't be watched: poll them gently. New folders get read ahead.
-    // The Manygit list re-reads too: edits in a working tree don't touch .git.
+    // The Git Graph list re-reads too: edits in a working tree don't touch .git.
     cx.timer.every(15000, (cx) => { if (!this.watching || this.state === "workspace") this.refresh(cx, true, true); this.warm(cx); check(); });
     check();
   }
@@ -178,7 +178,7 @@ export class Graph {
     }
   }
 
-  // Like manygit: read the folders open in other spaces ahead, one at a time, so switching to one shows it at once.
+  // Like Git Graph: read the folders open in other spaces ahead, one at a time, so switching to one shows it at once.
   warm(cx) {
     if (this.folder || this.warming) return;
     const machineOf = new Map(spaces().flatMap((s) => s.tabs.map((tab) => [tab.id, s.machine ?? null])));
@@ -198,7 +198,7 @@ export class Graph {
           const remotes = this.remotes;
           const read = await readFolder(cwd, on, { filter: ALL, remotes, limit: PAGE }).catch(() => null);
           if (read && key !== this.context && !this.seen.has(key) && remotes === this.remotes) {
-            // A folder that isn't a repository may hold some: entering it searches (Manygit).
+            // A folder that isn't a repository may hold some: entering it searches (Git Graph).
             keep(this.seen, key, { ...folderState(), state: read.state ?? "ready", ...read, warmed: read.state === "norepo" }, SEEN);
           }
         }
@@ -212,7 +212,7 @@ export class Graph {
     const { cwd, on } = location(this.folder), context = this.key();
     if (context !== this.context) { this.enter(context); full = true; }
     if (!cwd) { this.state = "nofolder"; return; }
-    // A repository opened from the Manygit list loads in place of the folder.
+    // A repository opened from the Git Graph list loads in place of the folder.
     const { filter, remotes, limit } = this, opened = this.opened;
     const loadKey = JSON.stringify([context, opened]);
     if (this.loading?.key === loadKey) { this.again = this.again === "full" || full ? "full" : "status"; return; }
@@ -255,7 +255,7 @@ export class Graph {
     });
   }
 
-  // Manygit: find the repositories under cwd, then read each one's status.
+  // Git Graph: find the repositories under cwd, then read each one's status.
   async scan(cwd, on, stale, cx, timer) {
     const depth = depthSetting();
     if (timer && this.state === "norepo" && this.cwd === cwd) return;
@@ -302,7 +302,7 @@ export class Graph {
     }
   }
 
-  // Manygit's fetch: every repository with a remote, 8 at a time, each row
+  // Git Graph's fetch: every repository with a remote, 8 at a time, each row
   // updated as its fetch ends. It goes on in the background if you open a repository.
   fetchEvery(cx) {
     const ws = this.workspace;
@@ -649,16 +649,16 @@ export class Graph {
   header(t) {
     const ready = this.state === "ready" || this.state === "empty", ws = this.workspace;
     const where = this.current ?? (this.head ? `detached at ${this.head.slice(0, 8)}` : null);
-    // Opened from the Manygit list: "‹ Manygit" goes back to it, the repository's name
+    // Opened from the Git Graph list: "‹ Git Graph" goes back to it, the repository's name
     // drops the same rows down over the graph to switch to another.
     const repo = ws && this.opened ? ws.repos.find((r) => r.path === this.opened) : null;
     const settingsShown = this.state === "workspace" || (this.state === "norepo" && !this.skipped);
     return h_flex().h(42).flex_none().px(14).gap(8).items_center().border_b(1).border_color(t.border)
-      .when(!repo, (e) => e.child(div().text_size(13).font_semibold().child(ws ? "Manygit" : "Git")))
+      .when(!repo, (e) => e.child(div().text_size(13).font_semibold().child(ws ? "Git Graph" : "Git")))
       .when(Boolean(repo), (e) => e
         .child(h_flex().id("graph-back").h(24).pl(2).pr(6).gap(3).flex_none().items_center().rounded(6).cursor_pointer()
           .hover((s) => s.bg(t.hover)).on_click((_e, cx) => this.back(cx))
-          .child(svg(icon("back")).size(14).flex_none().text_color(t.muted)).child(div().text_size(13).font_semibold().child("Manygit")))
+          .child(svg(icon("back")).size(14).flex_none().text_color(t.muted)).child(div().text_size(13).font_semibold().child("Git Graph")))
         .child(h_flex().id("graph-repository").h(22).px(7).gap(5).min_w(0).items_center().rounded(6).cursor_pointer()
           .bg(this.picking ? t.selected : t.raised).text_color(t.foreground).hover((s) => s.bg(t.hover)).on_click((_e, cx) => this.togglePicker(cx))
           .child(svg(icon("folder")).size(12).flex_none()).child(div().min_w(0).truncate().text_size(11.5).font_semibold().child(repo.name))))
@@ -705,7 +705,7 @@ export class Graph {
     });
   }
 
-  // Manygit's repository pane: grouped by folder, each row its branch, uncommitted
+  // Git Graph's repository pane: grouped by folder, each row its branch, uncommitted
   // changes and how it stands against its upstream. A click opens its graph.
   repoRows(t) {
     const repos = this.workspace.repos, grouped = repos.some((r) => r.group);
@@ -913,7 +913,7 @@ export class Graph {
     if (!this.drag && seen !== this.seenCols) { this.seenCols = seen; this.cols = withDefaults(savedCols); }
     const fetched = shared("re-git-graph.fetched");
     if (fetched?.at !== this.seenFetched) { this.seenFetched = fetched?.at; if (fetched?.root) this.fetchErrors.delete(fetched.root); }
-    // After an action (here, or from a Manygit row's menu) the graph or the list reads again.
+    // After an action (here, or from a Git Graph row's menu) the graph or the list reads again.
     if (changed !== this.seenChange) { this.seenChange = changed; if (this.root || this.state === "workspace") this.refresh(cx); }
     // New settings: a depth searches again, tags read every row again.
     const setting = `${depthSetting()} ${tagsShown()}`;
@@ -928,7 +928,7 @@ export class Graph {
       .on_hover((hovered, cx) => { if (!hovered) this.endDrag(cx); })
       .on_key_down((e, cx) => {
         if (e.key !== "escape" || !(this.selected || this.opened)) return;
-        // Esc closes the dropdown, a diff, then the details, then goes back to the Manygit list.
+        // Esc closes the dropdown, a diff, then the details, then goes back to the Git Graph list.
         if (this.picking) this.picking = false; else if (this.diff) this.diff = null; else if (this.selected) { this.selected = null; this.details = null; } else this.back(cx);
         cx.stop_propagation(); cx.notify();
       })

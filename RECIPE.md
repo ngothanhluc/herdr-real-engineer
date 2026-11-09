@@ -72,9 +72,9 @@ One column on `background`, radius 10, 1px `border`, base type 12.5px. Top to
 bottom:
 
 - **Header**, 42px, 14px side padding, bottom border. The tool's name at 13px
-  semibold: "Git" for a repository, "Manygit" for a folder of them (see
-  **Manygit** below). A repository opened from the Manygit list shows a back
-  chevron and "Manygit" (back to the list), then the repository's name as a
+  semibold: "Git" for a repository, "Git Graph" for a folder of them (see
+  **Git Graph** below). A repository opened from the Git Graph list shows a back
+  chevron and "Git Graph" (back to the list), then the repository's name as a
   chip (folder icon, `raised`, `selected` while open) that drops the list's
   rows down under the header, over the graph: `raised`, at most 260px with
   scrolling, the open repository `selected` with its name in `accent`, every
@@ -85,12 +85,12 @@ bottom:
   with a commit icon. On the right, 24px icon buttons in `muted`: Find (a
   magnifier, `selected` while the find bar is open; only when the history
   shows), Fetch (arrow down, only when the repo has remotes; it says
-  `Fetching…` while running) and Refresh, and Settings (a gear) on the Manygit
+  `Fetching…` while running) and Refresh, and Settings (a gear) on the Git Graph
   list and when a folder holds none. When a newer release is out, an `accent`
   dot and **Update Graph** sit before them. No commit count, as in Git Graph.
-- **Manygit**, when the folder isn't a repository but holds some, after
-  [manygit](https://github.com/rabeeh-ta/manygit)'s repository pane, in place of
-  the toolbar and table. The header reads `Manygit`, `N repos` in `dim`. Rows
+- **Git Graph**, when the folder isn't a repository but holds some, after
+  [upstream manygit](https://github.com/rabeeh-ta/manygit)'s repository pane, in place of
+  the toolbar and table. The header reads `Git Graph`, `N repos` in `dim`. Rows
   grouped by the folder they're in (a 26px `dim` 11px heading, `group/`, `./`
   for the top; no headings when every repo is at the top), each 34px, indented
   28px under a heading (14px otherwise): the name at 11.5px (`accent` for the
@@ -102,7 +102,7 @@ bottom:
   has diverged), nothing when it's in sync; then `not pushed` in `ansi1` (a
   remote, but the branch has no upstream; nothing on a detached HEAD),
   `no remote` `dim`, `upstream gone` `ansi1`, `…` while loading. A click opens
-  the repository's graph with everything above; "‹ Manygit" or `Esc` (with
+  the repository's graph with everything above; "‹ Git Graph" or `Esc` (with
   nothing else open) returns to the list.
   **Right-click a row**: its remotes (`git config --get-regexp
   '^remote\..*\.url$'`) and the machine's agents (`knownAgents`, kept per
@@ -338,7 +338,7 @@ section above the same file list.
 - **Which repository**: the focused pane's live folder (`panes()[i].cwd`),
   else `focused().cwd`, else the space's folder, on the space's machine.
   Opened with `props.folder` (as a pane), always that folder. If it's a
-  repository, use it; otherwise it's a Manygit folder when it holds
+  repository, use it; otherwise it's a Git Graph folder when it holds
   repositories. A home folder and any folder above it aren't searched: this
   machine's `home()`, and for another machine `/`, `/root`, `/home/<name>` and
   `/Users/<name>`. A new folder starts clean and loads at once; a slower load
@@ -348,7 +348,7 @@ section above the same file list.
   the background and redraws only if something changed. The folders open in
   other spaces' panes are read ahead, one at a time: 1.5 s after start, then
   every 15 s for new ones. A commit's details are kept too (the last 200).
-- **Manygit loading**: one `find -H <folder> -mindepth 1 -maxdepth <depth+1>`
+- **Git Graph loading**: one `find -H <folder> -mindepth 1 -maxdepth <depth+1>`
   walk prints each `.git` and prunes there, and prunes hidden folders,
   `node_modules`, `vendor`, `venv`, `__pycache__`, `dist`, `build`, `target`,
   `site-packages` and `Library`; at most 500 repositories. Each row's status
@@ -493,7 +493,7 @@ section above the same file list.
     runs an action and opens dialogs; `git.js` everything git, no herdr import
     (log and status parsing, labels and their widths, the hit test, menus,
     dialogs, validation, argv per action); `lanes.js` the lane layout;
-    `repos.js` Manygit's `find`, status parse and sync token; `settings.js`;
+    `repos.js` Git Graph's `find`, status parse and sync token; `settings.js`;
     `update.js` (`VERSION`, `REPO`, `CHECK`).
   - Added in this repo: `query.js` (no herdr import: the filter shape
     `{kind: "all"} | {kind: "current"} | {kind: "refs", refs}`, its log args,
@@ -516,7 +516,7 @@ section above the same file list.
   - Herdr's `mods/changes/changes.svg` for Show in Changes; its own icons in
     `icons/` (Lucide-style, ISC notice there). Commands: `layout.select` /
     `layout.show` (`panel-body` → `changes`, `panel`). Programs: `git`, and
-    `find` and `env` for Manygit, through `exec(…, { cwd, on })`. Network:
+    `find` and `env` for Git Graph, through `exec(…, { cwd, on })`. Network:
     the update check's `fetch`.
 - `keys.json`: `layout:real-engineer` (`cmd-shift-e` → `re-tabs.files`,
   `cmd-shift-g` → `re-tabs.graph`), `mod:re-files` (`cmd-s` →
@@ -600,7 +600,7 @@ section above the same file list.
   ids of Herdr's `main` layout.
 - Herdr's `exec` stops a command after 30 s: a slow fetch, pull, push or
   pre-commit hook fails there.
-- Tested on Herdr app 0.1.14 on macOS. Untested: Linux, Windows. Manygit needs
+- Tested on Herdr app 0.1.14 on macOS. Untested: Linux, Windows. Git Graph needs
   `find` and `env`, so not Windows.
 
 ## Done when
