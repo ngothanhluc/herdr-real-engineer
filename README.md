@@ -6,15 +6,14 @@ Changes. The Files panel gets a right-click menu, file operations, and an
 editable preview. The side panel gets a third view: a commit graph of the
 focused terminal's repository, with a branch filter and a find bar. And an
 **Awake** switch above the footer keeps the Mac up, on demand or while agents
-work. Two more mods come along but stay out of the layout: a Markdown window
-(`cmd-shift-m`) and a review pane with local Changes and a GitHub Pull request
-(`cmd-shift-r`).
+work. A Markdown window (`cmd-shift-m`) and a review pane (`cmd-shift-r`) come
+along too. The review pane is a second view of `re-git-graph`.
 
 ![Real Engineer](preview.png)
 
-The commit graph in `mods/re-git-graph/` comes from
-[rabeeh-ta/herdr-git-graph](https://github.com/rabeeh-ta/herdr-git-graph) as a git subtree.
-See [Credits](#credits).
+The commit graph in `mods/re-git-graph/` started as
+[rabeeh-ta/herdr-git-graph](https://github.com/rabeeh-ta/herdr-git-graph) and is
+now a fork of it. See [Credits](#credits).
 
 ## What's in it
 
@@ -23,10 +22,9 @@ See [Credits](#credits).
 | `layouts/real-engineer.json` | Herdr's `main` layout. The top bar uses `re-tabs`, the Files panel uses `re-files`, and the side panel stack `panel-body` has a third child, `graph`, showing `re-git-graph`. |
 | `mods/re-tabs/` | A clone of Herdr's `tabs` mod (`cloned_from` 0.1.14). |
 | `mods/re-files/` | A clone of Herdr's `files` mod (`cloned_from` 0.1.14). |
-| `mods/re-git-graph/` | rabeeh-ta's git-graph 0.3.0, renamed, with a branch filter and a find bar. |
+| `mods/re-git-graph/` | A fork of rabeeh-ta's git-graph 0.3.0: renamed, a branch filter, a find bar, and the review pane. No longer synced with upstream. |
 | `mods/re-awake/` | On, Agent, Off: keeps this Mac awake with `caffeinate`, on demand or while an agent on it works. macOS only. |
 | `mods/re-markdown/` | A read-only Markdown window for the focused pane's folder. `cmd-shift-m`. |
-| `mods/re-review/` | A review pane with two tabs: local Changes, and a GitHub Pull request through `gh`. `cmd-shift-r`. |
 | `keys.json` | The keys the layout expects. Merge it into yours. |
 | `install.sh` | Copies the mods and the layout into `~/.config/herdr-app`. |
 | `RECIPE.md` | The brief to build the layout from scratch. |
@@ -156,10 +154,12 @@ When the file open in the Files panel is Markdown, its header shows
 **Preview**, which opens the window on that file. Opening it again replaces the
 window in place instead of stacking a second one.
 
-### re-review: Changes and Pull request
+### Review: Changes and Pull request
 
-`cmd-shift-r` opens one review pane per space, split to the right of the
-focused pane. Pressing it again focuses the pane that is already open.
+The review pane is `re-git-graph` with `props.view: "review"`. The graph's
+header has a **Review** button, and `cmd-shift-r` opens the same pane. It opens
+one pane per space, split to the right of the focused pane; pressing again
+focuses the pane that is already open.
 
 **Changes** reviews local git. The header switches between the worktree (the
 uncommitted diff against `HEAD`, untracked files included) and the branch
@@ -210,11 +210,11 @@ the network.
   stop. It reads the process list once to find Herdr's pid. Nothing leaves the
   machine.
 - **re-tabs** runs no programs.
-- **re-review** runs `git` for the Changes tab, the same read-only calls as
-  re-git-graph, and `gh` for the Pull request tab: `gh pr view`, `gh pr diff`,
-  `gh pr list`, `gh pr review` and `gh pr merge`. It uses the account you
-  signed in with `gh auth login`. Nothing is fetched from git for you; the pull
-  request is shown as GitHub has it.
+- **re-git-graph**'s review view runs `git` for the Changes tab, the same
+  read-only calls as the graph, and `gh` for the Pull request tab: `gh pr view`,
+  `gh pr diff`, `gh pr list`, `gh pr review` and `gh pr merge`. It uses the
+  account you signed in with `gh auth login`. Nothing is fetched from git for
+  you; the pull request is shown as GitHub has it.
 - **re-markdown** runs `git ls-files` (or one `find`) and reads the file you
   pick. It writes nothing.
 
@@ -288,8 +288,8 @@ so new default shortcuts in later Herdr releases must be added by hand.
   `git maintenance start`) in that repository fixes it.
 - Not in this version: pull in the graph (a Manygit row's menu has it),
   interactive rebase, and per-file actions in commit details.
-- `re-review`'s Pull request tab needs `gh`, signed in. Without it the tab says
-  so and the Changes tab still works.
+- The review view's Pull request tab needs `gh`, signed in. Without it the tab
+  says so and the Changes tab still works.
 - A `gh pr diff` larger than Herdr's 30 s or 8 MiB command budget shows the
   error instead of the diff. Review comments are summary bodies only; there are
   no inline line comments.
@@ -299,10 +299,10 @@ so new default shortcuts in later Herdr releases must be added by hand.
 
 ## Development
 
-To pull a new upstream git-graph release into `mods/re-git-graph/`, run
-`scripts/update-git-graph.sh`. It splits upstream's `mods/git-graph` folder and
-merges it with `git subtree pull --squash`. Then rename any new `git-graph`
-names to `re-git-graph` (the script lists them) and run `npm test`.
+`mods/re-git-graph/` is a fork of rabeeh-ta's git-graph, not a subtree. There is
+no upstream sync: changes here stay here, and upstream releases have to be
+diffed by hand if you want one. `mods/re-git-graph/LICENSE` keeps rabeeh-ta's
+notice.
 
 ```sh
 npm test                                     # every tests/*.test.mjs, also run in CI
@@ -312,8 +312,8 @@ herdr-app check ~/.config/herdr-app/mods/re-git-graph   # and re-files, re-tabs
 
 The tests build throwaway repositories (with a bare "remote") and folders, and
 check the graph's parsing, lanes, labels, menus, validation and every action
-against real git, the branch filter and find matching, and `re-files`' menus
-and file operations.
+against real git, the branch filter and find matching, `re-files`' menus and
+file operations, and the review view's diff parsing and `gh` argv.
 
 When behavior changes, update `RECIPE.md` so the recipe still builds what the
 layout does.
@@ -322,9 +322,9 @@ layout does.
 
 - The commit graph (`mods/re-git-graph/`) is
   [herdr-git-graph](https://github.com/rabeeh-ta/herdr-git-graph) by
-  [rabeeh-ta](https://github.com/rabeeh-ta), MIT, v0.3.0. It is pulled in as a
-  squashed git subtree, renamed, and extended with the branch filter and the
-  find bar. Bugs in those additions are this repo's.
+  [rabeeh-ta](https://github.com/rabeeh-ta), MIT, v0.3.0. It is forked, renamed,
+  and extended with the branch filter, the find bar and the review pane. Bugs in
+  those additions are this repo's.
 - `mods/re-tabs/`, `mods/re-files/` and `layouts/real-engineer.json` start from
   the `tabs`, `files` and `main` files that ship with Herdr 0.1.14
   ([herdrdev/herdr-app](https://github.com/herdrdev/herdr-app), Apache-2.0).

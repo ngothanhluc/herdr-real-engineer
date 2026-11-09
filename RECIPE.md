@@ -275,9 +275,10 @@ section above the same file list.
 ### Review pane
 
 - `cmd-shift-r` (`re-tabs.review`) keeps one pane per space: it focuses the
-  pane whose `mod` is `re-review`, else splits right with
-  `props: { root }`, resolved from the focused terminal before the pane takes
-  focus.
+  pane whose `mod` is `re-git-graph` and `props.view` is `"review"`, else
+  splits right with `props: { root, view: "review" }`, resolved from the
+  focused terminal before the pane takes focus. The graph header's **Review**
+  button does the same.
 - Changes reads `git status --porcelain=v1 -z` and `git diff HEAD`, or
   `git diff <base>...HEAD` for Branch. The base is `origin/HEAD`, else `main`,
   else `master`. Untracked files are read and shown as all-added.
@@ -443,11 +444,11 @@ section above the same file list.
   `changes`, `workspace-status`) is Herdr's shipped mods.
 - `mods/re-markdown/`: original. No upstream copy. One `main.js` with
   `displayText()` (front matter) at the top, and `mod.json` with the window
-  overlay (`width: 560`, `height: 0.9`, `key: "re-markdown"`).
-- `mods/re-review/`: original. No upstream copy. `diff.js` and `pr.js` hold the
-  pure parsing and `gh` argument builders and import nothing from Herdr, so
+  overlay (`width: 900`, `height: 0.9`, `key: "re-markdown"`).
+- `mods/re-git-graph/review.js`, `review-diff.js`, `review-pr.js`: the review
+  view, written here. The two parsers import nothing from Herdr, so
   `tests/review-diff.test.mjs` and `tests/review-pr.test.mjs` run them under
-  Node. `main.js` is the pane.
+  Node. `main.js` picks the view with `props.view === "review"`.
 - `mods/re-tabs/`: `herdr-app do mod.clone '{"name":"tabs","as":"re-tabs"}'``
   (`mod.json` `cloned_from: { name: "tabs", version: "0.1.14" }`), then:
   - a module-level `togglePanel(id)`: `layout.hide {id: "panel"}` when the
@@ -477,8 +478,11 @@ section above the same file list.
     `touch`, `mkdir`, `mv`, `cp`, through `exec(…, { on })`. Files:
     `readTextFile`, `writeTextFile`, `watchFolder`.
   - Icons in `icons/` (Lucide-style, ISC notice there).
-- `mods/re-git-graph/`: rabeeh-ta's git-graph 0.3.0 with every `git-graph`
-  name (mod, shared keys, element ids) changed to `re-git-graph`.
+- `mods/re-git-graph/`: a fork of rabeeh-ta's git-graph 0.3.0, no longer a
+  subtree and not synced with upstream. Every `git-graph` name (mod, shared
+  keys, element ids) became `re-git-graph`, and it gained a branch filter, a
+  find bar, and the review view (`review.js`, `review-diff.js`,
+  `review-pr.js`).
   `mod.json` `{ "place": "none" }`.
   - `main.js`: one `View` with six roles by `props().role`: none, the graph;
     `"menu"` (268px popup); `"dialog"` (420px, height from its fields);
@@ -606,8 +610,8 @@ section above the same file list.
   bare remote; the branch filter's log args and normalization and find's
   matching on a real repo; `re-files`' menus per target and local/remote, and
   its file operations on a real folder.
-- `herdr-app check` passes for `re-tabs`, `re-files`, `re-git-graph`,
-  `re-markdown` and `re-review`, and after
+- `herdr-app check` passes for `re-tabs`, `re-files`, `re-git-graph` and
+  `re-markdown`, and after
   `layout.switch {"name": "real-engineer"}`, `herdr-app status` shows
   `"layout": "real-engineer"` and `"errors": []`.
 - `cmd-shift-m` opens the Markdown window on the focused pane's folder; a file

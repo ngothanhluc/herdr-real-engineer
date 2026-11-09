@@ -2,7 +2,7 @@
 // JSON shape, comment/review mapping, caps, and every argv the pane runs.
 // Run: node tests/review-pr.test.mjs
 import assert from "node:assert/strict";
-import { normalizePr, normalizeList, viewArgs, listArgs, diffArgs, reviewArgs, mergeArgs, PR_FIELDS } from "../mods/re-review/pr.js";
+import { normalizePr, normalizeList, viewArgs, listArgs, diffArgs, reviewArgs, mergeArgs, PR_FIELDS } from "../mods/re-git-graph/review-pr.js";
 
 // ---- the exact gh pr view shape
 {

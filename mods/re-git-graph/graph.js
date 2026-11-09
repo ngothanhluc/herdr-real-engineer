@@ -3,7 +3,7 @@
 // a pane. Labels take double-clicks (checkout) and right-clicks (menus).
 import { div, svg, PathBuilder } from "gpui-kit";
 import { v_flex, h_flex, Scrollbar, v_virtual_list, VirtualListScrollHandle } from "gpui-base";
-import { spaces, panes, focused, exec, watchFolder, readTextFile, theme, settings, props, shared, setShared, openOverlay, home, notify, knownAgents, updates, nextCommand } from "herdr";
+import { spaces, panes, focused, exec, watchFolder, readTextFile, theme, settings, props, shared, setShared, openOverlay, home, notify, knownAgents, updates, nextCommand, run } from "herdr";
 import { layoutLanes } from "./lanes.js";
 import { READ, STATUS, UNCOMMITTED, LABEL, parseLog, parseStatus, withUncommitted, labelsOf, hitLabel,
   menuFor, menuHeight, fileArgs, joinFiles, diffArgs, diffRows } from "./git.js";
@@ -670,6 +670,7 @@ export class Graph {
       .when(Boolean(available()), (e) => e.child(h_flex().id("graph-update").h(24).px(7).gap(5).flex_none().items_center().rounded(6).text_size(11.5)
         .cursor_pointer().text_color(t.accent).hover((s) => s.bg(t.hover)).on_mouse_down("left", (_e, cx) => cx.stop_propagation())
         .on_click(() => openUpdate()).child(div().size(6).rounded(3).bg(t.accent)).child("Update Graph")))
+      .when(this.state === "ready", (e) => e.child(this.iconButton("graph-review", "merge", "Review", false, (_e, cx) => this.openReview(cx), t)))
       .when(this.state === "ready", (e) => e.child(this.iconButton("graph-find", "search", null, Boolean(this.find), (_e, cx) => (this.find ? this.closeFind(cx) : this.openFind(cx)), t)))
       .when(ready && this.remoteNames?.length > 0, (e) => e.child(this.iconButton("graph-fetch", "fetch", this.fetching ? "Fetching…" : null, false, (_e, cx) => this.fetch(cx), t)))
       .when(this.state === "workspace", (e) => {
@@ -682,6 +683,26 @@ export class Graph {
 
   openSettings() {
     openOverlay({ mod: "re-git-graph", kind: "popup", at: "pointer", width: 240, height: 92, props: { role: "settings" } });
+  }
+
+  // One review pane per space. The pane records itself in shared state because
+  // a pane's props aren't visible to panes(); a graph pane looks like a review
+  // pane by mod name alone.
+  openReview(cx) {
+    const root = this.root;
+    if (!root) return;
+    const f = focused(), space = spaces().find((s) => s.active);
+    const pane = f?.pane ? panes().find((p) => p.pane === f.pane) : null;
+    const tabs = new Set((space?.tabs ?? []).map((tab) => tab.id));
+    const saved = shared("re-git-graph.reviewPane");
+    const open = saved ? panes().find((p) => p.pane === saved && tabs.has(p.tab)) : null;
+    if (open) return run("pane.focus", { pane: open.pane });
+    const before = new Set(panes().map((p) => p.pane));
+    run("pane.split", { direction: "right", ...(pane ? { pane: pane.pane } : {}), mod: "re-git-graph", props: { root, view: "review" } });
+    cx.timer.after(80, () => {
+      const added = panes().find((p) => p.mod === "re-git-graph" && !before.has(p.pane));
+      if (added) setShared("re-git-graph.reviewPane", added.pane);
+    });
   }
 
   // Manygit's repository pane: grouped by folder, each row its branch, uncommitted

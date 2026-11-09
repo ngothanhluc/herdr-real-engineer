@@ -4,7 +4,7 @@
 // one review pane per space. See README.md.
 import { View, div, svg, image } from "gpui-kit";
 import { h_flex } from "gpui-base";
-import { spaces, panes, focused, run, openOverlay, theme, window, shared, layout, settings, nextCommand } from "herdr";
+import { spaces, panes, focused, run, openOverlay, theme, window, shared, setShared, layout, settings, nextCommand } from "herdr";
 
 function find(node, id) {
   if (node?.id === id) return node;
@@ -23,14 +23,22 @@ function togglePanel(id) {
 
 // One review pane per space: focus the open one, else split beside the focused pane.
 // The worktree is resolved now, because the pane can't read it once it has focus.
-function openReview() {
+// The pane records itself in shared state: a graph pane and a review pane share
+// a mod name, so panes() alone can't tell them apart.
+function openReview(cx) {
   const f = focused(), space = spaces().find((s) => s.active);
   const pane = f?.pane ? panes().find((p) => p.pane === f.pane) : null;
   const tabs = new Set((space?.tabs ?? []).map((t) => t.id));
-  const open = panes().find((p) => p.mod === "re-review" && tabs.has(p.tab));
+  const saved = shared("re-git-graph.reviewPane");
+  const open = saved ? panes().find((p) => p.pane === saved && tabs.has(p.tab)) : null;
   if (open) return run("pane.focus", { pane: open.pane });
   const root = pane?.cwd || f?.cwd || space?.folder;
-  run("pane.split", { direction: "right", ...(pane ? { pane: pane.pane } : {}), mod: "re-review", ...(root ? { props: { root } } : {}) });
+  const before = new Set(panes().map((p) => p.pane));
+  run("pane.split", { direction: "right", ...(pane ? { pane: pane.pane } : {}), mod: "re-git-graph", props: { ...(root ? { root } : {}), view: "review" } });
+  cx.timer.after(80, () => {
+    const added = panes().find((p) => p.mod === "re-git-graph" && !before.has(p.pane));
+    if (added) setShared("re-git-graph.reviewPane", added.pane);
+  });
 }
 
 export default class Tabs extends View {
@@ -38,7 +46,7 @@ export default class Tabs extends View {
     this.pressed = null;
     this.panels = JSON.parse(localStorage.getItem("panels") ?? "{}");
     // keys.json: "re-tabs.files" / "re-tabs.graph" toggle that panel, "re-tabs.review" opens review.
-    cx.spawn(async () => { for (;;) { const c = await nextCommand(); if (c === "review") openReview(); else if (find(layout(), c)) togglePanel(c); } });
+    cx.spawn(async (cx) => { for (;;) { const c = await nextCommand(); if (c === "review") openReview(cx); else if (find(layout(), c)) togglePanel(c); } });
   }
 
   // The side panel is remembered per space: switching shows that space's choice

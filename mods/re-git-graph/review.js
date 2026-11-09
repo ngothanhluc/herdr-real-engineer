@@ -4,8 +4,8 @@
 import { View, div } from "gpui-kit";
 import { v_flex, h_flex, TextView, Textarea, TextareaState, Scrollbar, v_virtual_list } from "gpui-base";
 import { spaces, exec, readTextFile, watchFolder, theme, settings, props } from "herdr";
-import { parseRows, parsePatch, syntheticAdd, pairRows } from "./diff.js";
-import { normalizePr, normalizeList, viewArgs, listArgs, diffArgs, reviewArgs, mergeArgs } from "./pr.js";
+import { parseRows, parsePatch, syntheticAdd, pairRows } from "./review-diff.js";
+import { normalizePr, normalizeList, viewArgs, listArgs, diffArgs, reviewArgs, mergeArgs } from "./review-pr.js";
 
 const ROW = 20, MAX_FILES = 400;
 

@@ -2,7 +2,7 @@
 // statuses, binary files, /dev/null paths, split pairing and synthetic adds.
 // Run: node tests/review-diff.test.mjs
 import assert from "node:assert/strict";
-import { parseRows, parsePatch, syntheticAdd, pairRows, diffStat } from "../mods/re-review/diff.js";
+import { parseRows, parsePatch, syntheticAdd, pairRows, diffStat } from "../mods/re-git-graph/review-diff.js";
 
 // ---- hunk numbering
 {
