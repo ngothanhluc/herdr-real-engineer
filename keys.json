@@ -2,7 +2,9 @@
   "layout:real-engineer": {
     "cmd-shift-e": "re-tabs.files",
     "cmd-shift-g": "re-tabs.graph",
-    "cmd-shift-a": "re-awake.cycle"
+    "cmd-shift-a": "re-awake.cycle",
+    "cmd-shift-m": "mod.open:re-markdown",
+    "cmd-shift-r": "re-tabs.review"
   },
   "mod:re-files": {
     "cmd-s": "re-files.save"

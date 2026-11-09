@@ -1,10 +1,10 @@
 // Modified copy of Herdr's `tabs` mod (app 0.1.13, Apache-2.0,
 // github.com/herdrdev/herdr-app). Changed: renamed to re-tabs, a Graph button,
-// panel toggles that keep the space's choice, and the re-tabs.* key commands.
-// See README.md.
+// panel toggles that keep the space's choice, the re-tabs.* key commands, and
+// one review pane per space. See README.md.
 import { View, div, svg, image } from "gpui-kit";
 import { h_flex } from "gpui-base";
-import { spaces, panes, run, openOverlay, theme, window, shared, layout, settings, nextCommand } from "herdr";
+import { spaces, panes, focused, run, openOverlay, theme, window, shared, layout, settings, nextCommand } from "herdr";
 
 function find(node, id) {
   if (node?.id === id) return node;
@@ -21,12 +21,24 @@ function togglePanel(id) {
   else { run("layout.select", { stack: "panel-body", child: id }); run("layout.show", { id: "panel" }); }
 }
 
+// One review pane per space: focus the open one, else split beside the focused pane.
+// The worktree is resolved now, because the pane can't read it once it has focus.
+function openReview() {
+  const f = focused(), space = spaces().find((s) => s.active);
+  const pane = f?.pane ? panes().find((p) => p.pane === f.pane) : null;
+  const tabs = new Set((space?.tabs ?? []).map((t) => t.id));
+  const open = panes().find((p) => p.mod === "re-review" && tabs.has(p.tab));
+  if (open) return run("pane.focus", { pane: open.pane });
+  const root = pane?.cwd || f?.cwd || space?.folder;
+  run("pane.split", { direction: "right", ...(pane ? { pane: pane.pane } : {}), mod: "re-review", ...(root ? { props: { root } } : {}) });
+}
+
 export default class Tabs extends View {
   init(_props, cx) {
     this.pressed = null;
     this.panels = JSON.parse(localStorage.getItem("panels") ?? "{}");
-    // keys.json: "re-tabs.files" / "re-tabs.graph" toggle that panel.
-    cx.spawn(async () => { for (;;) { const c = await nextCommand(); if (find(layout(), c)) togglePanel(c); } });
+    // keys.json: "re-tabs.files" / "re-tabs.graph" toggle that panel, "re-tabs.review" opens review.
+    cx.spawn(async () => { for (;;) { const c = await nextCommand(); if (c === "review") openReview(); else if (find(layout(), c)) togglePanel(c); } });
   }
 
   // The side panel is remembered per space: switching shows that space's choice
