@@ -218,11 +218,30 @@ assertion is up, `dim` when not, `blocked` with the reason in place of the
 label when it can't start. On a system that isn't macOS the row reads
 "macOS only".
 
+### Markdown window
+
+`cmd-shift-m` opens a 560px-wide, 90%-tall window over the layout, in
+`background` with a 1px `border` and radius 10. The 42px header reads
+**Markdown** on the left, the folder or file name right-aligned in `dim`, and a
+`×`. The body lists the folder's Markdown files in 28px rows: the file name,
+its folder in `dim` on the right. Choosing one shows `←`, the file name and the
+rendered document.
+
+### Review pane
+
+A pane split to the right of the focused pane. Its 42px header holds
+**Changes** and **Pull request**; on Changes a Worktree/Branch segmented toggle
+follows, and `↻` sits at the right end. The body is a 30px file list with a
+status letter, `+add` and `−del`, and a `done` dot for reviewed files, or a diff
+with 20px rows, a 34px number column, `ansi2` for added and `ansi1` for
+removed lines. The Pull request tab adds a metadata row and a conversation
+section above the same file list.
+
 ## How it behaves
 
 - **Agent statuses** (working, blocked, done, idle) are Herdr's own, in the
   sidebar's Agents list and the pane headers. This layout doesn't change them.
-  Nothing in the three mods animates.
+  Nothing in these mods animates.
 
 ### Awake row
 
@@ -235,6 +254,35 @@ label when it can't start. On a system that isn't macOS the row reads
 - The poll is every 20 seconds; the row also re-checks when agent statuses
   change. What it shows comes from `launchctl list herdr-awake`, never from
   what it asked for, so a refused start shows red instead of a false On.
+
+### Markdown window
+
+- Lists `git ls-files` for `*.md`, `*.markdown` and `*.mdx`, or a depth-3
+  `find` outside a repository, sorted shallowest first and capped at 40.
+- Reads the chosen file with `readTextFile` (1 MiB) and renders it with
+  `TextView.markdown`. Front matter becomes a fenced `yaml` block. Links open
+  in the browser. The window is read-only.
+- Reloads on `watchFolder`, or every 3 seconds in a space on another machine.
+  Esc or `×` closes it; `←` returns to the list; `props: { path }` opens one
+  file directly.
+
+### Review pane
+
+- `cmd-shift-r` (`re-tabs.review`) keeps one pane per space: it focuses the
+  pane whose `mod` is `re-review`, else splits right with
+  `props: { root }`, resolved from the focused terminal before the pane takes
+  focus.
+- Changes reads `git status --porcelain=v1 -z` and `git diff HEAD`, or
+  `git diff <base>...HEAD` for Branch. The base is `origin/HEAD`, else `main`,
+  else `master`. Untracked files are read and shown as all-added.
+- Pull request runs `gh pr view` and `gh pr diff`; with no PR for the branch it
+  lists `gh pr list`. Comment, Approve, Request changes and Merge open a card
+  in the pane and run `gh pr review` / `gh pr merge`. Merge offers Merge,
+  Squash or Rebase and an optional branch delete. A failure keeps the card open
+  with `gh`'s message.
+- `j`/`k` move between files, `r` toggles reviewed, `s` switches unified and
+  split, Esc goes back. Reviewed marks live in `localStorage` per root, scope
+  and base.
 
 ### Top bar
 
@@ -387,7 +435,14 @@ label when it can't start. On a system that isn't macOS the row reads
   `{ "id": "awake", "type": "block", "size": { "px": 30 }, "content": { "mod": "re-awake" } }`.
   Everything else (sidebar, `workspace-chrome`, `spaces`, `agents`, `pane`,
   `changes`, `workspace-status`) is Herdr's shipped mods.
-- `mods/re-tabs/`: `herdr-app do mod.clone '{"name":"tabs","as":"re-tabs"}'`
+- `mods/re-markdown/`: original. No upstream copy. One `main.js` with
+  `displayText()` (front matter) at the top, and `mod.json` with the window
+  overlay (`width: 560`, `height: 0.9`, `key: "re-markdown"`).
+- `mods/re-review/`: original. No upstream copy. `diff.js` and `pr.js` hold the
+  pure parsing and `gh` argument builders and import nothing from Herdr, so
+  `tests/review-diff.test.mjs` and `tests/review-pr.test.mjs` run them under
+  Node. `main.js` is the pane.
+- `mods/re-tabs/`: `herdr-app do mod.clone '{"name":"tabs","as":"re-tabs"}'``
   (`mod.json` `cloned_from: { name: "tabs", version: "0.1.14" }`), then:
   - a module-level `togglePanel(id)`: `layout.hide {id: "panel"}` when the
     panel shows `id`, else `layout.select {stack: "panel-body", child: id}`
@@ -545,9 +600,19 @@ label when it can't start. On a system that isn't macOS the row reads
   bare remote; the branch filter's log args and normalization and find's
   matching on a real repo; `re-files`' menus per target and local/remote, and
   its file operations on a real folder.
-- `herdr-app check` passes for `re-tabs`, `re-files` and `re-git-graph`, and
-  after `layout.switch {"name": "real-engineer"}`, `herdr-app status` shows
+- `herdr-app check` passes for `re-tabs`, `re-files`, `re-git-graph`,
+  `re-markdown` and `re-review`, and after
+  `layout.switch {"name": "real-engineer"}`, `herdr-app status` shows
   `"layout": "real-engineer"` and `"errors": []`.
+- `cmd-shift-m` opens the Markdown window on the focused pane's folder; a file
+  renders, links open, and Esc closes it. In a repository with an untracked
+  `.md`, the file appears after `git add`.
+- `cmd-shift-r` opens the review pane beside the terminal; pressing it again
+  focuses that pane instead of adding one. Changes lists the worktree, Branch
+  lists the branch's commits against its base, and opening a file shows its
+  diff. In a branch with a PR, the Pull request tab shows its body, comments
+  and diff; a review or merge card names the PR and reports `gh`'s error when
+  it fails.
 - The top bar shows Files, Changes, Graph. Clicking Graph opens the panel on
   the graph; clicking it again closes it. `cmd-shift-g` and `cmd-shift-e` do
   the same.

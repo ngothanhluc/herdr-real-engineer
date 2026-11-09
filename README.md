@@ -6,7 +6,9 @@ Changes. The Files panel gets a right-click menu, file operations, and an
 editable preview. The side panel gets a third view: a commit graph of the
 focused terminal's repository, with a branch filter and a find bar. And an
 **Awake** switch above the footer keeps the Mac up, on demand or while agents
-work.
+work. Two more mods come along but stay out of the layout: a Markdown window
+(`cmd-shift-m`) and a review pane with local Changes and a GitHub Pull request
+(`cmd-shift-r`).
 
 ![Real Engineer](preview.png)
 
@@ -23,6 +25,8 @@ See [Credits](#credits).
 | `mods/re-files/` | A clone of Herdr's `files` mod (`cloned_from` 0.1.14). |
 | `mods/re-git-graph/` | rabeeh-ta's git-graph 0.3.0, renamed, with a branch filter and a find bar. |
 | `mods/re-awake/` | On, Agent, Off: keeps this Mac awake with `caffeinate`, on demand or while an agent on it works. macOS only. |
+| `mods/re-markdown/` | A read-only Markdown window for the focused pane's folder. `cmd-shift-m`. |
+| `mods/re-review/` | A review pane with two tabs: local Changes, and a GitHub Pull request through `gh`. `cmd-shift-r`. |
 | `keys.json` | The keys the layout expects. Merge it into yours. |
 | `install.sh` | Copies the mods and the layout into `~/.config/herdr-app`. |
 | `RECIPE.md` | The brief to build the layout from scratch. |
@@ -134,6 +138,45 @@ The icon turns `accent` while the assertion is up. When it can't start, it
 turns red and carries the reason. Closing the lid still sleeps the Mac; no
 user process can hold it awake through the lid.
 
+### re-markdown: a Markdown window
+
+`cmd-shift-m` opens a 560 px window over the layout. It lists the Markdown
+files in the focused pane's folder: `git ls-files` first, or a depth-3 search
+outside a repository, sorted shallowest first and capped at 40. Click one to
+render it.
+
+The window is read-only. `TextView` draws headings, lists, tables, code blocks
+and links; links open in the browser, and YAML front matter shows as a YAML
+block instead of a horizontal rule. The file reloads while it is open. Esc or
+the `×` closes it, and `←` returns to the list. Another mod can hand it a file
+with `props: { path }`.
+
+### re-review: Changes and Pull request
+
+`cmd-shift-r` opens one review pane per space, split to the right of the
+focused pane. Pressing it again focuses the pane that is already open.
+
+**Changes** reviews local git. The header switches between the worktree (the
+uncommitted diff against `HEAD`, untracked files included) and the branch
+(everything since its base, which is `origin/HEAD`, else `main`, else
+`master`). The file list shows status, added and deleted lines, and a dot for
+files you marked reviewed.
+
+**Pull request** runs `gh pr view` and `gh pr diff` for the current branch.
+When the branch has no pull request it lists the open ones. The tab shows the
+PR's state, base and head, body, existing comments and reviews, and the same
+diff view.
+
+`j` and `k` move between files, `r` marks a file reviewed, `s` switches
+unified and split, and Esc goes back to the file list. Reviewed marks are
+local to the pane.
+
+Comment, Approve, Request changes and Merge sit in the Pull request header.
+Each opens a card over the pane, names the pull request, and asks again before
+running `gh pr review` or `gh pr merge`. Merge chooses Merge, Squash or Rebase
+and can delete the branch afterwards. When `gh` fails, its own message stays in
+the card so you can retry.
+
 ## What it runs
 
 Read this before you install. The mods run programs and one of them reaches
@@ -162,6 +205,13 @@ the network.
   stop. It reads the process list once to find Herdr's pid. Nothing leaves the
   machine.
 - **re-tabs** runs no programs.
+- **re-review** runs `git` for the Changes tab, the same read-only calls as
+  re-git-graph, and `gh` for the Pull request tab: `gh pr view`, `gh pr diff`,
+  `gh pr list`, `gh pr review` and `gh pr merge`. It uses the account you
+  signed in with `gh auth login`. Nothing is fetched from git for you; the pull
+  request is shown as GitHub has it.
+- **re-markdown** runs `git ls-files` (or one `find`) and reads the file you
+  pick. It writes nothing.
 
 ## Install
 
@@ -178,7 +228,7 @@ cd herdr-real-engineer
 ./install.sh
 ```
 
-`install.sh` copies the three mods and the layout into `~/.config/herdr-app`
+`install.sh` copies the mods and the layout into `~/.config/herdr-app`
 (or `$HERDR_APP_HOME`). It copies, not links, because Herdr doesn't load a
 mod's SVG files through a symlink.
 
@@ -207,6 +257,8 @@ herdr-app do pane.split '{"direction":"right","mod":"re-git-graph","props":{"fol
 | `cmd-shift-g` | this layout | Toggle the Graph panel |
 | `cmd-s` | Files panel | Save the edited file |
 | `cmd-shift-a` | this layout | Cycle Awake: On, Agent, Off |
+| `cmd-shift-m` | this layout | Open the Markdown window |
+| `cmd-shift-r` | this layout | Open or focus the review pane |
 | `cmd-f` | Graph | Open the find bar |
 
 Editing `keys.json` makes the whole file yours. Herdr then stops updating it,
@@ -231,6 +283,14 @@ so new default shortcuts in later Herdr releases must be added by hand.
   `git maintenance start`) in that repository fixes it.
 - Not in this version: pull in the graph (a Manygit row's menu has it),
   interactive rebase, and per-file actions in commit details.
+- `re-review`'s Pull request tab needs `gh`, signed in. Without it the tab says
+  so and the Changes tab still works.
+- A `gh pr diff` larger than Herdr's 30 s or 8 MiB command budget shows the
+  error instead of the diff. Review comments are summary bodies only; there are
+  no inline line comments.
+- `re-markdown` lists git-tracked Markdown files inside a repository. A new file
+  shows after `git add`, or outside a repository. It renders up to 1 MiB, the
+  read limit for a mod.
 
 ## Development
 
