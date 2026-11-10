@@ -114,9 +114,9 @@ It has a branch filter, a find bar, a Pull request tab and a Config tab.
   diff, and its **Stage** or **Unstage** button moves it in or out of the
   index. `cmd-shift-r` lands there.
 - **Actions above the graph.** While the worktree has changes, a row shows
-  **Stage all**, **Commit** and **Stash**. When the branch is behind its
-  upstream it adds **Pull**, and when ahead it adds **Push**. The buttons open
-  the same dialogs as the menus.
+  **Stage all**, **Commit** and **Stash**. **Pull** and **Push** stay there
+  whenever the branch has an upstream and a remote, and show `↓N` or `↑N` when
+  behind or ahead. The buttons open the same dialogs as the menus.
 - **Git config.** The **Config** tab is who this repository commits as. It
   shows `user.name` and `user.email` with the scope each comes from, and the
   pairs you have used before: pick one to write it to the repository's own

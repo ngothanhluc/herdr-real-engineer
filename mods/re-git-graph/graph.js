@@ -798,8 +798,7 @@ export class Graph {
 
 
   hasActions() {
-    return this.files.length > 0 || this.behind > 0 || this.ahead > 0 || this.gone
-      || (Boolean(this.current) && !this.upstream && this.remoteNames.length > 0);
+    return this.files.length > 0 || (Boolean(this.current) && this.remoteNames.length > 0);
   }
 
   actions(t) {
@@ -817,9 +816,10 @@ export class Graph {
         .child(button("graph-stage-all", "Stage all", "plus", "Stage every change, untracked too", (_e, cx) => this.stageAll(cx)))
         .child(button("graph-commit", "Commit", "commit", "Commit the staged changes", (_e, cx) => this.commit(cx), true))
         .child(button("graph-stash", "Stash", "stash", "Stash the uncommitted changes", (_e, cx) => this.stash(cx))))
-      .when(behind > 0, (e) => e.child(button("graph-pull", `Pull ↓${behind}`, "fetch", `Fast-forward to ${this.upstream}`, (_e, cx) => this.pull(cx), true)))
-      .when(ahead > 0 || this.gone || (Boolean(this.current) && !this.upstream && this.remoteNames.length > 0), (e) => e
-        .child(button("graph-push", ahead > 0 ? `Push ↑${ahead}` : "Push", "push", "Push this branch", (_e, cx) => this.push(cx))));
+      .when(Boolean(this.upstream) && !this.gone, (e) => e.child(button("graph-pull", behind > 0 ? `Pull ↓${behind}` : "Pull",
+        "fetch", behind > 0 ? `Fast-forward to ${this.upstream}` : "Pull the upstream", (_e, cx) => this.pull(cx), behind > 0)))
+      .when(Boolean(this.current) && this.remoteNames.length > 0, (e) => e.child(button("graph-push",
+        ahead > 0 ? `Push ↑${ahead}` : "Push", "push", "Push this branch", (_e, cx) => this.push(cx), ahead > 0)));
   }
 
   toolbar(t) {

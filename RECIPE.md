@@ -141,9 +141,9 @@ bottom:
     and a chevron down.
   - a `Remotes` checkbox (13px box, `accent` filled with a check when on).
 - **Actions row**, 30px under the toolbar while the worktree has changes or the
-  branch is ahead, behind, or has a gone upstream: `Stage all`, `Commit`
-  (accent) and `Stash` while there are changes, `Pull ↓N` while behind, and
-  `Push ↑N` while ahead or when the upstream is gone. Below 360px the labels
+  branch has a remote: `Stage all`, `Commit` (accent) and `Stash` while there
+  are changes, `Pull` while there is an upstream (with `↓N` when behind), and
+  `Push` while there is a remote (with `↑N` when ahead). Below 360px the labels
   become icons with tooltips. Each opens the same dialog as the menus.
 - **Branch filter popup**, 260px at the pointer on `popover`, 6px padding:
   a 30px `Filter branches` input, then 28px rows (at most 10 shown, then it
