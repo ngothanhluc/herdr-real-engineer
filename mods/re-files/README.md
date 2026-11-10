@@ -16,7 +16,11 @@ Changed here:
 - An editable preview with `cmd-s`, an unsaved marker, a save-or-discard
   prompt on the way back, and a bar that offers Reload or Overwrite when the
   file changed or was deleted on disk.
+- Entries Git ignores fade in the tree: 55% opacity, the name in dim italic,
+  and `Ignored by Git` on hover. One `git ls-files --others --ignored
+  --exclude-standard --directory` per refresh answers for the whole tree,
+  including everything inside an ignored folder.
 
 Files written here, not in Herdr's mod: `dialog.js`, `menu.js`, `ops.js`,
-`edit.js`. `main.js` says at the top that it was changed. The chevron and
-file/folder SVGs are Herdr's, unchanged.
+`edit.js`, `ignore.js`. `main.js` says at the top that it was changed. The
+chevron and file/folder SVGs are Herdr's, unchanged.

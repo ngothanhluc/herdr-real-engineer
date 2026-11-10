@@ -1,7 +1,7 @@
 // Modified copy of Herdr's `files` mod (app 0.1.13, Apache-2.0,
 // github.com/herdrdev/herdr-app). Changed: renamed to re-files, the right-click
-// menu and file operations, and the editable preview with save and conflict
-// handling. See README.md.
+// menu and file operations, the editable preview with save and conflict
+// handling, and Git-ignored entries fading in the tree. See README.md.
 // A lazy file browser for the focused pane's folder, with bounded read-only previews.
 import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex, Editor, EditorState } from "gpui-base";
@@ -9,6 +9,7 @@ import { spaces, panes, focused, exec, readTextFile, watchFolder, theme, setting
 import { Menu, openMenu } from "./menu.js";
 import { Dialog } from "./dialog.js";
 import { track, dirty, leave, listen, conflictBar } from "./edit.js";
+import { IGNORED_ARGS, parseIgnored, isIgnored } from "./ignore.js";
 
 function location() {
   const space = spaces().find(s => s.active), f = focused();
@@ -48,7 +49,7 @@ async function directory(path, on) {
 class Files extends View {
   init(_props, cx) {
     this.saved = new Map();
-    this.entries = new Map(); this.folders = new Set(); this.pending = new Set(); this.marks = {};
+    this.entries = new Map(); this.folders = new Set(); this.pending = new Set(); this.marks = {}; this.ignored = new Set();
     this.refresh(cx);
     cx.timer.every(10000, cx => this.refresh(cx));
     this.seenChange = shared("re-files.changed")?.at;
@@ -86,7 +87,7 @@ class Files extends View {
       if (this.context) this.saved.set(this.context.key, { folders: this.folders, file: this.file, kept });
       const saved = this.saved.get(next);
       this.context = { key: next, cwd, on }; this.root = cwd; this.on = on; this.entries = new Map(); this.folders = new Set(saved?.folders);
-      this.pending = new Set(); this.marks = {}; this.show(null); this.watched = null; this.error = null; this.limited = false;
+      this.pending = new Set(); this.marks = {}; this.ignored = new Set(); this.show(null); this.watched = null; this.error = null; this.limited = false;
       this.loading = false;
       if (saved?.kept) { this.file = saved.file; this.code = saved.kept.code; this.edit = saved.kept.edit; saved.kept = null; }
       else if (saved?.file) this.show(saved.file, cx);
@@ -103,6 +104,7 @@ class Files extends View {
         }
         const top = await exec("git", ["rev-parse", "--show-toplevel"], { cwd, on }).catch(() => null);
         const marks = {};
+        let ignored = new Set();
         if (top?.code === 0) {
           // Writes nothing under .git (index lock, fsmonitor cookie): the folder watch would refresh again.
           const status = await exec("git", ["--no-optional-locks", "-c", "core.fsmonitor=false", "status", "--porcelain=v1", "-z", "--no-renames", "--untracked-files=all"], { cwd, on }).catch(() => null);
@@ -110,9 +112,13 @@ class Files extends View {
             const xy = entry.slice(0, 2);
             marks[`${top.stdout.trim()}/${entry.slice(3)}`] = xy === "??" || xy.includes("A") ? "A" : xy.includes("U") ? "U" : xy.includes("D") ? "D" : "M";
           }
+          // Ignored entries fade in the tree. Same lock-free read, and the same
+          // reason: this runs on the folder watch.
+          const listed = await exec("git", ["--no-optional-locks", ...IGNORED_ARGS], { cwd, on }).catch(() => null);
+          if (listed?.code === 0) ignored = parseIgnored(listed.stdout);
         }
         if (!this.current(context)) return;
-        this.marks = marks; this.error = null; this.watch(cwd, cx);
+        this.marks = marks; this.ignored = ignored; this.error = null; this.watch(cwd, cx);
       } catch (e) { if (this.current(context)) this.error = String(e); }
       finally { if (this.context === context) this.loading = false; cx.notify(); }
     });
@@ -165,14 +171,17 @@ class Files extends View {
     if (out.length >= TOTAL || depth > 40) return out;
     for (const entry of this.entries.get(prefix) ?? []) {
       if (out.length >= TOTAL) break;
-      const path = prefix ? `${prefix}/${entry.name}` : entry.name, open = this.folders.has(path), mark = this.marks[`${this.root}/${path}`];
+      const path = prefix ? `${prefix}/${entry.name}` : entry.name, open = this.folders.has(path), mark = this.marks[`${this.root}/${path}`], faded = isIgnored(this.ignored, path);
       out.push(h_flex().id(`file-${path}`).h(28).flex_none().pl(8 + depth * 18).pr(8).gap(7).items_center().rounded(7).cursor_pointer().hover(s => s.bg(t.hover))
         .on_click((_e, cx) => entry.dir ? this.toggle(path, cx) : this.show(path, cx))
         .on_mouse_down("right", (_e, cx) => { cx.stop_propagation(); openMenu({ kind: entry.dir ? "folder" : "file", rel: path, name: entry.name, siblings: this.entries.get(prefix).map(e => e.name) }, this.menuContext()); })
         .child(entry.dir ? svg(`mods/re-files/chevron-${open ? "down" : "right"}.svg`).size(12).flex_none().text_color(t.dim) : div().w(12).flex_none())
         .child(svg(`mods/re-files/${entry.dir ? "folder" : "file"}.svg`).size(14).flex_none().text_color(t.muted))
-        .child(div().flex_1().min_w(0).truncate().child(entry.name))
-        .when(Boolean(mark), el => el.child(div().text_size(11).text_color(mark === "A" ? t.ansi2 : mark === "D" || mark === "U" ? t.ansi1 : t.blocked).child(mark))));
+        .child(div().flex_1().min_w(0).truncate().when(faded, el => el.text_color(t.dim).italic()).child(entry.name))
+        .when(Boolean(mark), el => el.child(div().text_size(11).text_color(mark === "A" ? t.ansi2 : mark === "D" || mark === "U" ? t.ansi1 : t.blocked).child(mark)))
+        // Git ignores this file or folder: fade the row like a blurred-out hint,
+        // and say why on hover so the fade never reads as disabled.
+        .when(faded, el => el.opacity(0.55).tooltip("Ignored by Git")));
       if (entry.dir && open) this.rows(path, depth + 1, out, t);
     }
     return out;

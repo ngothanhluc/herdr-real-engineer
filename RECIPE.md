@@ -48,6 +48,11 @@ folder and file icons, at most 500 entries per folder and 5,000 in all). Added:
 - The preview of a file on this computer is an editable editor, never
   truncated. A file on another machine stays read-only, cut at 400,000
   characters as Herdr's is.
+- **Ignored entries fade**: a file or folder matched by `.gitignore`, and
+  anything inside an ignored folder, is drawn at 55% opacity with its name in
+  `dim` italic, and an `Ignored by Git` tooltip on hover. One `git ls-files
+  --others --ignored --exclude-standard --directory` per refresh answers for
+  the whole tree.
 - **The menu**: a 240px popup at the pointer on `popover`, 5px padding, 30px
   rows (radius 7, a 14px `muted` icon, 12.8px text), 1px `border` separators.
   Delete is `ansi1`. Rows, by what was right-clicked:
