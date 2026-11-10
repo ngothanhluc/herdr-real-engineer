@@ -2,7 +2,7 @@
 // when opened as a pane. Labels take double-clicks (checkout) and right-clicks
 // (menus).
 import { div, svg, PathBuilder } from "gpui-kit";
-import { v_flex, h_flex, Scrollbar, v_virtual_list, VirtualListScrollHandle } from "gpui-base";
+import { v_flex, h_flex, Input, InputState, Scrollbar, v_virtual_list, VirtualListScrollHandle } from "gpui-base";
 import { spaces, panes, focused, exec, watchFolder, readTextFile, theme, settings, props, shared, setShared, openOverlay, home, notify, knownAgents, updates, nextCommand } from "herdr";
 import { layoutLanes } from "./lanes.js";
 import { READ, STATUS, TRACK, UNCOMMITTED, LABEL, parseLog, parseStatus, parseTrackFor, withUncommitted, labelsOf, hitLabel,
@@ -155,6 +155,10 @@ export class Graph {
     // Herdr's agents per machine, for a row's "New … tab" (as its + menu lists them).
     this.agents = new Map();
     this.handle = cx.focus_handle();
+    this.message = InputState.new({ placeholder: "Message (Enter to commit)" });
+    this.message.on("change", (_e, cx) => cx.notify());
+    this.message.on("submit", (_e, cx) => this.commitMessage(cx));
+    this.hoveredFile = null;
     // Inside the panel's tabbed shell the outer card is drawn once, by the shell.
     this.embedded = false;
     this.reset();
@@ -174,6 +178,8 @@ export class Graph {
   // graph that isn't drawn reads nothing. The shell calls this before it
   // renders, so the folder stays current behind every tab.
   sync(cx) {
+    const changed = shared("re-git-graph.changed");
+    if (changed !== this.seenChange) { this.seenChange = changed; if (this.root || this.state === "workspace") { this.refresh(cx); return; } }
     if (this.key() !== this.context) this.refresh(cx);
   }
 
@@ -797,29 +803,113 @@ export class Graph {
   }
 
 
-  hasActions() {
-    return this.files.length > 0 || (Boolean(this.current) && this.remoteNames.length > 0);
+  // The Git tab: a source-control panel over the same files and branch state as
+  // the graph. Staged and unstaged files are one list split by `staged`.
+  sourceControl(cx) {
+    const t = theme();
+    if (this.state === "workspace") return this.sourceNotice(t, "Open a repository", "Pick one in Git Graph.");
+    if (this.state !== "ready" && this.state !== "empty") return this.empty(t);
+    const staged = this.files.filter((f) => f.staged), changes = this.files.filter((f) => !f.staged);
+    const canCommit = Boolean(this.message.value().trim()) && staged.length > 0;
+    return v_flex().id("source-control").size_full().min_h(0).bg(t.background).text_color(t.foreground).text_size(12.5)
+      .child(this.sourceHeader(t))
+      .child(this.sourceActions(t))
+      .child(this.sourceMessage(t, canCommit))
+      .child(v_flex().id("source-files").flex_1().min_h(0).overflow_y_scrollbar().px(10).pb(12)
+        .child(this.sourceSection("Staged Changes", staged, true, t))
+        .child(this.sourceSection("Changes", changes, false, t))
+        .when(this.files.length === 0, (e) => e.child(div().pt(24).text_size(12).text_color(t.dim).child("Working tree clean."))));
   }
 
-  actions(t) {
-    const changes = this.files.length, behind = this.behind ?? 0, ahead = this.ahead ?? 0;
-    const compact = (this.width ?? 0) < 360;
-    const button = (id, label, glyph, tip, action, accent = false) => h_flex().id(id).h(22).px(compact ? 6 : 7).gap(4)
-      .flex_none().items_center().rounded(5).border_1().border_color(t.border)
-      .bg(accent ? t.accent + "26" : t.raised).text_color(accent ? t.accent : t.muted)
-      .text_size(10.5).cursor_pointer().tooltip(tip)
-      .hover((s) => s.bg(t.hover).text_color(t.foreground)).on_click(action)
-      .when(compact, (e) => e.child(svg(icon(glyph)).size(12).flex_none()))
-      .when(!compact, (e) => e.child(label));
-    return h_flex().h(30).flex_none().px(10).gap(6).items_center().border_b(1).border_color(t.border)
-      .when(changes > 0, (e) => e
-        .child(button("graph-stage-all", "Stage all", "plus", "Stage every change, untracked too", (_e, cx) => this.stageAll(cx)))
-        .child(button("graph-commit", "Commit", "commit", "Commit the staged changes", (_e, cx) => this.commit(cx), true))
-        .child(button("graph-stash", "Stash", "stash", "Stash the uncommitted changes", (_e, cx) => this.stash(cx))))
-      .when(Boolean(this.upstream) && !this.gone, (e) => e.child(button("graph-pull", behind > 0 ? `Pull ↓${behind}` : "Pull",
-        "fetch", behind > 0 ? `Fast-forward to ${this.upstream}` : "Pull the upstream", (_e, cx) => this.pull(cx), behind > 0)))
-      .when(Boolean(this.current) && this.remoteNames.length > 0, (e) => e.child(button("graph-push",
-        ahead > 0 ? `Push ↑${ahead}` : "Push", "push", "Push this branch", (_e, cx) => this.push(cx), ahead > 0)));
+  sourceNotice(t, title, body) {
+    return v_flex().flex_1().min_h(0).items_center().justify_center().gap(8).px(28).pb(40)
+      .child(div().size(46).rounded(12).bg(t.raised).border_1().border_color(t.border).flex().items_center().justify_center()
+        .child(svg(icon("branch")).size(22).text_color(t.muted)))
+      .child(div().text_size(14).font_semibold().child(title))
+      .child(div().max_w(280).text_center().text_size(12).text_color(t.muted).child(body));
+  }
+
+  sourceHeader(t) {
+    return h_flex().h(42).flex_none().px(14).gap(8).items_center().border_b(1).border_color(t.border)
+      .child(div().text_size(13).font_semibold().child("Source Control"))
+      .when(Boolean(this.current), (e) => e.child(h_flex().h(22).px(7).gap(5).min_w(0).items_center().rounded(6).bg(t.accent + "26").text_color(t.accent)
+        .child(svg(icon("branch")).size(12).flex_none()).child(div().min_w(0).truncate().text_size(11.5).font_semibold().child(this.current))))
+      .child(div().flex_1())
+      .child(this.iconButton("source-refresh", "refresh", null, false, (_e, cx) => this.refresh(cx), t));
+  }
+
+  sourceActions(t) {
+    const behind = this.behind ?? 0, ahead = this.ahead ?? 0;
+    const button = (id, glyph, tip, action, on = true) => h_flex().id(id).h(24).px(6).gap(4).flex_none().items_center().rounded(5)
+      .border_1().border_color(t.border).bg(on ? t.raised : t.background).tooltip(tip)
+      .text_color(on ? t.muted : t.dim).opacity(on ? 1 : 0.45)
+      .when(on, (e) => e.cursor_pointer().hover((s) => s.bg(t.hover).text_color(t.foreground)).on_click(action))
+      .child(svg(icon(glyph)).size(13).flex_none());
+    return h_flex().h(34).flex_none().px(10).gap(6).items_center().border_b(1).border_color(t.border)
+      .child(button("source-stage-all", "plus", "Stage all", (_e, cx) => this.stageAll(cx), this.files.length > 0))
+      .child(button("source-stash", "stash", "Stash", (_e, cx) => this.stash(cx), this.files.length > 0))
+      .when(behind > 0, (e) => e.child(button("source-pull", "fetch", `Pull ↓${behind}`, (_e, cx) => this.pull(cx))))
+      .when(ahead > 0 || this.gone || (Boolean(this.current) && !this.upstream && this.remoteNames.length > 0), (e) =>
+        e.child(button("source-push", "push", ahead > 0 ? `Push ↑${ahead}` : "Push", (_e, cx) => this.push(cx))))
+      .when(this.remoteNames.length > 0, (e) => e.child(button("source-fetch", "fetch", "Fetch", (_e, cx) => this.fetch(cx))));
+  }
+
+  sourceMessage(t, canCommit) {
+    return v_flex().flex_none().px(10).pt(8).gap(8)
+      .child(Input.new(this.message).h(34).px(10).rounded(6).border_1().border_color(t.input).bg(t.raised).text_size(12).text_color(t.foreground))
+      .child(h_flex().h(34).flex_none().rounded(6).border_1().border_color(canCommit ? t.accent : t.border)
+        .bg(canCommit ? t.accent : t.raised).items_center().justify_center().gap(6)
+        .when(canCommit, (e) => e.cursor_pointer().hover((s) => s.opacity(0.9)).on_click((_e, cx) => this.commitMessage(cx)))
+        .child(svg(icon("check")).size(14).flex_none().text_color(canCommit ? t.accent_foreground : t.dim))
+        .child(div().text_size(12).font_medium().text_color(canCommit ? t.accent_foreground : t.dim).child("Commit")));
+  }
+
+  sourceSection(title, items, staged, t) {
+    const rows = items.map((f, i) => this.sourceFileRow(f, i, staged, t));
+    return v_flex().flex_none().pt(10).gap(2)
+      .child(h_flex().h(24).px(2).gap(6).items_center().text_size(11).text_color(t.dim)
+        .child(svg(icon("chevron-down")).size(11).flex_none())
+        .child(div().font_semibold().child(title))
+        .child(div().text_size(10).text_color(t.dim).child(String(items.length))))
+      .when(items.length === 0, (e) => e.child(div().h(24).px(22).flex().items_center().text_size(11).text_color(t.dim).child("No changes")))
+      .children(rows);
+  }
+
+  sourceFileRow(f, i, staged, t) {
+    const parts = f.path.split("/"), name = parts.pop();
+    const sc = f.status === "A" ? t.ansi2 : f.status === "D" || f.status === "U" ? t.ansi1 : t.blocked;
+    return h_flex().id(`source-file-${staged ? "s" : "c"}-${i}`).h(24).flex_none().px(6).gap(8).items_center().rounded(6)
+      .cursor_pointer().hover((s) => s.bg(t.hover)).on_click((_e, cx) => this.openFileDiff(f, cx))
+      .on_hover((on, cx) => { this.hoveredFile = on ? f.path : this.hoveredFile === f.path ? null : this.hoveredFile; cx.notify(); })
+      .child(div().w(12).flex_none())
+      .child(h_flex().flex_1().min_w(0).child(div().text_color(t.dim).truncate().child(parts.length ? parts.join("/") + "/" : "")).child(div().min_w(0).truncate().child(name)))
+      .when(this.hoveredFile === f.path, (e) => e
+        .child(div().px(6).py(1).rounded(6).border_1().border_color(t.border).text_size(10).text_color(t.dim).cursor_pointer()
+          .tooltip(staged ? "Unstage this file, keep the change" : "Stage this file")
+          .hover((s) => s.bg(t.hover).text_color(t.foreground))
+          .on_click((_e, cx) => { cx.stop_propagation(); staged ? this.unstageFile(f, cx) : this.stageFile(f, cx); })
+          .child(staged ? "Unstage" : "Stage"))
+        .child(div().px(6).py(1).rounded(6).border_1().border_color(t.border).text_size(10).text_color(t.dim).cursor_pointer()
+          .tooltip("Discard changes to this file").hover((s) => s.bg(t.ansi1 + "33").text_color(t.foreground))
+          .on_click((_e, cx) => { cx.stop_propagation(); this.discardFile(f, cx); }).child("Discard")))
+      .child(div().flex_none().text_size(11).text_color(sc).child(f.status));
+  }
+
+  commitMessage(cx) {
+    const message = this.message.value().trim();
+    if (!message || !this.files.some((f) => f.staged)) return;
+    cx.spawn(async () => {
+      const result = await perform({ type: "commit" }, { message, all: false }, this.ctx);
+      if (result.ok) this.message.set_value("");
+    });
+  }
+
+  openFileDiff(f, cx) {
+    const commit = this.commits.find((c) => c.uncommitted);
+    if (!commit) return;
+    this.selected = commit.hash;
+    this.diff = { path: f.path, rows: null, fresh: Boolean(f.untracked) };
+    this.openDiffWindow(cx);
   }
 
   toolbar(t) {
@@ -1020,7 +1110,6 @@ export class Graph {
       .when(this.state === "workspace", (e) => e.child(this.workspaceList(t)))
       .when(Boolean(this.picking && this.workspace && this.opened), (e) => e.child(this.picker(t)))
       .when(ready, (e) => e.child(this.toolbar(t))
-        .when(this.hasActions(), (el) => el.child(this.actions(t)))
         .when(Boolean(this.find), (el) => el.child(this.find.render(t, (cx) => this.closeFind(cx)))).child(this.columns(t, this.graphWidth())).child(this.list(t, mono))
         .when(Boolean(this.selected), (el) => el.child(this.detailsPane(t, mono))))
       .when(!ready && this.state !== "workspace", (e) => e.child(this.empty(t)));

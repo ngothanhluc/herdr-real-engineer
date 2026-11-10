@@ -71,7 +71,26 @@ folder and file icons, at most 500 entries per folder and 5,000 in all). Added:
   Folder, Rename file/folder, Move file/folder to Trash, Editor command, and
   Unsaved changes (Cancel, Discard, Save).
 
-### Git panel
+### Git tab (source control)
+
+The panel's first tab, on `background`, base type 12.5px. Top to bottom:
+
+- **Header**, 42px, 14px side padding: "Source Control" at 13px semibold, the
+  current branch as a 22px `accent` chip, and a Refresh icon on the right.
+- **Action row**, 34px: 24px icon buttons for Stage all, Stash, Pull, Push and
+  Fetch, each with a tooltip. Stage all and Stash dim when the worktree is
+  clean. Pull shows only when behind and Push only when ahead, when the
+  upstream is gone, or when the branch has no upstream yet.
+- **Message**, a 34px input, then a full-width **Commit** button. The button
+  is `accent` and live only when the message has text and something is staged.
+  Enter in the input commits too.
+- **Staged Changes** and **Changes**, 24px section headers with a count, then
+  one 24px row per file: the status letter (`A` `ansi2`, `D`/`U` `ansi1`,
+  else `blocked`), the folder in `dim`, the name, and the status on the right.
+  Hovering a row shows **Stage** or **Unstage** and **Discard**. Clicking a
+  row opens its diff in the window. A clean tree reads `Working tree clean.`
+
+### Git Graph tab
 
 One column on `background`, radius 10, 1px `border`, base type 12.5px. Top to
 bottom:
@@ -140,11 +159,6 @@ bottom:
     (`All branches`, `Current`, one branch's short name, or `N branches`),
     and a chevron down.
   - a `Remotes` checkbox (13px box, `accent` filled with a check when on).
-- **Actions row**, 30px under the toolbar while the worktree has changes or the
-  branch has a remote: `Stage all`, `Commit` (accent) and `Stash` while there
-  are changes, `Pull` while there is an upstream (with `↓N` when behind), and
-  `Push` while there is a remote (with `↑N` when ahead). Below 360px the labels
-  become icons with tooltips. Each opens the same dialog as the menus.
 - **Branch filter popup**, 260px at the pointer on `popover`, 6px padding:
   a 30px `Filter branches` input, then 28px rows (at most 10 shown, then it
   scrolls): `All branches` and `Current` (medium weight; hidden while the
@@ -238,10 +252,11 @@ label when it can't start. On a system that isn't macOS the row reads
 
 ### Review tabs
 
-The Git panel's 34px tab row holds **Git** and **Pull request**. The Git tab is
-the graph, with local changes in its **Uncommitted changes** row: selecting it
-lists the changed files and a file opens its diff. The Pull request tab has a
-42px header with `↻` at the right end, a metadata row and a conversation
+The panel's 34px tab row holds **Git**, **Git Graph**, **Pull request** and
+**Config**. **Git** is the source-control view above. **Git Graph** is the
+commit graph, with local changes in its **Uncommitted changes** row: selecting
+it lists the changed files and a file opens its diff. The Pull request tab has
+a 42px header with `↻` at the right end, a metadata row and a conversation
 section above a 30px file list with a status letter, `+add` and `−del`, or a
 diff with 20px rows, a 34px number column, `ansi2` for added and `ansi1` for
 removed lines.
@@ -283,21 +298,23 @@ removed lines.
 
 ### Review tabs
 
-- `cmd-shift-r` (`re-tabs.review`) shows the Git panel and sets
+- `cmd-shift-r` (`re-tabs.review`) shows the Git tab and sets
   `shared("re-git-graph.tab")` to `{ tab: "changes", at }`. The panel's shell
-  reads it on the next render, switches to the Git tab and selects the graph's
-  **Uncommitted changes** row. `re-tabs.config` asks for `{ tab: "config" }`
-  the same way. A layout with no `graph` block falls back to one review pane
-  per space: focus the pane whose `mod` is `re-git-graph` and `props.view` is
-  `"review"`, else split right with `props: { root, view: "review" }`.
-- The shell (`shell.js`) owns the tabs. The graph starts on screen; the Pull
-  request view is made with the shell and goes `active = false` when Git comes
-  back, so its timers and folder watcher do not read while hidden.
-- The Git tab's uncommitted row reads `git status --porcelain=v1 -z` and
-  `git diff HEAD`; selecting a file shows its diff. Branch scope and reviewed
-  marks stay in the standalone review pane (a layout without a `graph` block),
-  which reads `git diff <base>...HEAD` for Branch. The base is `origin/HEAD`,
-  else `main`, else `master`. Untracked files are read and shown as all-added.
+  reads it on the next render and switches to **Git**. `re-tabs.config` asks
+  for `{ tab: "config" }` the same way. A layout with no `graph` block falls
+  back to one review pane per space: focus the pane whose `mod` is
+  `re-git-graph` and `props.view` is `"review"`, else split right with
+  `props: { root, view: "review" }`.
+- The shell (`shell.js`) owns the tabs. **Git** starts on screen; the Pull
+  request view is made with the shell and goes `active = false` when another
+  tab comes back, so its timers and folder watcher do not read while hidden.
+- The Git tab and the Git Graph tab share the graph's files and branch state.
+  `git status --porcelain=v1 -z` fills the change lists and the graph's
+  uncommitted row; `git for-each-ref` fills the upstream and ahead/behind
+  counts. Selecting a file opens its diff. Branch scope and reviewed marks
+  stay in the standalone review pane (a layout without a `graph` block), which
+  reads `git diff <base>...HEAD` for Branch. The base is `origin/HEAD`, else
+  `main`, else `master`. Untracked files are read and shown as all-added.
 - Pull request runs `gh pr view` and `gh pr diff`; with no PR for the branch it
   lists `gh pr list`. Comment, Approve, Request changes and Merge open a card
   in the panel and run `gh pr review` / `gh pr merge`. Merge offers Merge,
@@ -670,15 +687,21 @@ removed lines.
 - `cmd-shift-m` opens the Markdown window on the focused pane's folder; a file
   renders, links open, and Esc closes it. In a repository with an untracked
   `.md`, the file appears after `git add`.
-- `cmd-shift-r` shows the Git panel on the graph's uncommitted row; pressing it
-  again keeps that panel in front. Selecting a file shows its diff. The
-  standalone review pane still lists the worktree or the branch against its
-  base. In a branch with a PR, the Pull request tab shows its body, comments
-  and diff; a review or merge card names the PR and reports `gh`'s error when
-  it fails.
-- The top bar shows Files and Git. Clicking Git opens the panel on the graph;
+- `cmd-shift-r` shows the Git tab; pressing it again keeps the panel in front.
+  The tab lists Staged Changes and Changes. Hovering a file shows Stage or
+  Unstage and Discard, and clicking it opens the diff window. Stage a file,
+  type a message and press Enter, and the commit lands. In a clean branch in
+  sync with its upstream, Pull and Push are absent; make a commit or reset one
+  behind and the matching button appears.
+- The Git Graph tab keeps the uncommitted row; selecting it lists the same
+  files and a file opens its diff. The standalone review pane still lists the
+  worktree or the branch against its base. In a branch with a PR, the Pull
+  request tab shows its body, comments and diff; a review or merge card names
+  the PR and reports `gh`'s error when it fails.
+- The top bar shows Files and Git. Clicking Git opens the panel on the Git tab;
   clicking it again closes it. `cmd-shift-g` and `cmd-shift-e` do the same.
-  Herdr's Changes button is gone; local changes are the uncommitted row.
+  Herdr's Changes button is gone; the Git tab lists local changes, and the
+  Git Graph tab keeps their uncommitted row.
 - Right-clicking a file in Files shows its 11 items in three groups; New File creates and
   opens the file; Delete asks, then the file is in the Trash.
 - Editing a local file shows `●`; `cmd-s` saves it and clears the dot.

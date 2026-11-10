@@ -23,7 +23,7 @@ small by keeping local changes as a patch over the shipped file. See
 | `layouts/real-engineer.json` | Herdr's `main` layout. The top bar uses `re-tabs`, the Files panel uses `re-files`, and the side panel stack `panel-body` has a third child, `graph`, showing `re-git-graph`. |
 | `mods/re-tabs/` | The tab bar, with Files and Git panel keys. |
 | `mods/re-files/` | The Files panel, with a right-click menu and an editable preview. |
-| `mods/re-git-graph/` | The commit graph, with a branch filter, a find bar, the Pull request tab, local changes in its uncommitted row, and a Config tab that sets the repository's `user.name` and `user.email`. |
+| `mods/re-git-graph/` | The Git panel: a source-control tab, the commit graph with a branch filter and find bar, the Pull request tab, and a Config tab that sets the repository's `user.name` and `user.email`. |
 | `mods/re-awake/` | On, Agent, Off: keeps this Mac awake with `caffeinate`, on demand or while an agent on it works. macOS only. |
 | `mods/re-markdown/` | A read-only Markdown window for the focused pane's folder. `cmd-shift-m`. |
 | `docs/git-config.md` | What the Config tab sets and how Git resolves an identity. |
@@ -112,11 +112,7 @@ It has a branch filter, a find bar, a Pull request tab and a Config tab.
 - **Uncommitted changes** sit on top as their own row, joined to HEAD by a
   dashed line. Selecting the row lists the changed files; a file opens its
   diff, and its **Stage** or **Unstage** button moves it in or out of the
-  index. `cmd-shift-r` lands there.
-- **Actions above the graph.** While the worktree has changes, a row shows
-  **Stage all**, **Commit** and **Stash**. **Pull** and **Push** stay there
-  whenever the branch has an upstream and a remote, and show `↓N` or `↑N` when
-  behind or ahead. The buttons open the same dialogs as the menus.
+  index. The **Git** tab is the full source-control view for those changes.
 - **Git config.** The **Config** tab is who this repository commits as. It
   shows `user.name` and `user.email` with the scope each comes from, and the
   pairs you have used before: pick one to write it to the repository's own
@@ -182,13 +178,21 @@ When the file open in the Files panel is Markdown, its header shows
 **Preview**, which opens the window on that file. Opening it again replaces the
 window in place instead of stacking a second one.
 
-### Review: local changes and Pull request
+### Git, Git Graph and Pull request
 
-The Git panel has three tabs: **Git**, **Pull request** and **Config**. Local
-changes are the graph's own top row, **Uncommitted changes**: selecting it
-lists the changed files with their added and deleted lines, and a file opens
-its diff. `cmd-shift-r` shows the panel on that row. A layout without a `graph`
-panel still gets the old standalone review pane, opened with
+The panel's first tab is **Git**, a source-control view of the focused
+repository. A branch chip names the current branch. Icons stage every change,
+stash, pull, push and fetch; **Pull** appears only when behind and **Push**
+only when ahead or without an upstream. The message box and **Commit** button
+commit the staged files. Below them, **Staged Changes** and **Changes** list
+the files; hovering a row shows **Stage** or **Unstage** and **Discard**, and
+clicking it opens the diff window. The message box commits on Enter.
+
+**Git Graph** is the second tab: the commit graph, with local changes in its
+**Uncommitted changes** row. Selecting that row lists the changed files with
+their added and deleted lines, and a file opens its diff. `cmd-shift-r` shows
+the **Git** tab. **Pull request** and **Config** follow. A layout without a
+`graph` panel still gets the old standalone review pane, opened with
 `props.view: "review"`, which keeps its Changes tab (worktree, or the branch
 against its base) and reviewed marks.
 
@@ -288,7 +292,7 @@ herdr-app do pane.split '{"direction":"right","mod":"re-git-graph","props":{"fol
 | `cmd-s` | Files panel | Save the edited file |
 | `cmd-shift-a` | this layout | Cycle Awake: On, Agent, Off |
 | `cmd-shift-m` | this layout | Open the Markdown window |
-| `cmd-shift-r` | this layout | Show the Git panel on uncommitted changes |
+| `cmd-shift-r` | this layout | Show the Git tab |
 | `cmd-f` | Graph | Open the find bar |
 
 Editing `keys.json` makes the whole file yours. Herdr then stops updating it,
@@ -313,7 +317,7 @@ so new default shortcuts in later Herdr releases must be added by hand.
 - Not in this version: pull in the graph (a repository row's menu has it),
   interactive rebase, and per-file actions in commit details.
 - The review view's Pull request tab needs `gh`, signed in. Without it the tab
-  says so and the Git tab's uncommitted row still works.
+  says so and the Git Graph tab's uncommitted row still works.
 - A `gh pr diff` larger than Herdr's 30 s or 8 MiB command budget shows the
   error instead of the diff. Review comments are summary bodies only; there are
   no inline line comments.

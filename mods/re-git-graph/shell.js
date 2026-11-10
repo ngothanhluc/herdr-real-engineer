@@ -1,8 +1,9 @@
-// The Git panel: the graph, the Pull request view and Git config as tabs in
-// one pane, so Review switches what the panel shows instead of splitting a
-// pane beside it. Local changes are the graph's own uncommitted row. The
-// review and config views are made with the shell and stay idle until their
-// tab comes to the front.
+// The Git panel: the source-control view, the graph, the Pull request view and
+// Git config as tabs in one pane, so Review switches what the panel shows
+// instead of splitting a pane beside it. The Git tab owns stage, commit, pull
+// and push; the graph keeps the history and its uncommitted row. The review
+// and config views are made with the shell and stay idle until their tab comes
+// to the front.
 import { div } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
 import { exec, layout, openOverlay, theme, shared } from "herdr";
@@ -17,7 +18,7 @@ import Review from "./review.js";
 const TAB_REQUEST = "re-git-graph.tab";
 const REQUEST_FRESH_MS = 10000;
 
-const TABS = [["graph", "Git"], ["pr", "Pull request"], ["config", "Config"]];
+const TABS = [["git", "Git"], ["graph", "Git Graph"], ["pr", "Pull request"], ["config", "Config"]];
 
 // A layout node by id, for "is this panel in front?" without asking the window.
 function find(node, id) {
@@ -31,7 +32,7 @@ function find(node, id) {
 
 export class Shell {
   init(cx) {
-    this.tab = "graph";
+    this.tab = "git";
     this.seenRequest = 0;
     // Repositories already asked for an identity this session.
     this.asked = new Set();
@@ -62,7 +63,10 @@ export class Shell {
   show(tab, cx) {
     if (!this.tabsShown().some(([id]) => id === tab)) tab = "graph";
     this.tab = tab;
-    if (tab === "graph") {
+    if (tab === "git") {
+      this.review.active = false;
+      this.graph.message?.focus?.();
+    } else if (tab === "graph") {
       this.review.active = false;
       this.graph.handle?.focus?.();
     } else if (tab === "pr") {
@@ -144,10 +148,8 @@ export class Shell {
   // cmd-shift-r: the Git tab, landed on the worktree's uncommitted row. The
   // history may still be loading (the panel can be mounted by this request),
   // so try again briefly.
-  openChanges(cx, tries = 0) {
-    if (tries === 0) this.show("graph", cx);
-    if (this.graph.showUncommitted(cx)) return;
-    if (!this.closed && tries < 15) cx.timer.after(200, (cx) => this.openChanges(cx, tries + 1));
+  openChanges(cx) {
+    this.show("git", cx);
   }
 
   render(cx) {
@@ -162,7 +164,8 @@ export class Shell {
       this.review.active = false;
       cx.timer.after(0, (cx) => this.graph.handle?.focus?.());
     }
-    const part = this.tab === "graph" ? this.graph.render(cx) : this.tab === "pr" ? this.review.render(cx) : this.config.render(cx);
+    const part = this.tab === "git" ? this.graph.sourceControl(cx) : this.tab === "graph" ? this.graph.render(cx)
+      : this.tab === "pr" ? this.review.render(cx) : this.config.render(cx);
     return v_flex().size_full().min_h(0).rounded(10).overflow_hidden().bg(t.background).border_1().border_color(t.border)
       .child(this.tabs(list, t, cx))
       .child(div().flex_1().min_h(0).child(part));
