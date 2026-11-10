@@ -66,6 +66,8 @@ Everything else is Herdr's tab bar as of 0.1.14.
 - **Editable preview.** Click a file on this computer and you can edit it.
   `cmd-s` saves. A `●` in the header marks unsaved edits. The back arrow asks
   to save or discard them. Files in spaces on another machine stay read-only.
+- **The tree keeps its place.** Opening a file and going back returns the tree
+  to the same scroll offset.
 - **Ignored entries fade.** A file or folder matched by `.gitignore` — and
   everything inside an ignored folder — is drawn at 55% opacity, dim and
   italic, with an `Ignored by Git` tooltip. One

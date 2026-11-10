@@ -45,7 +45,7 @@ async function directory(path, on) {
 class Files extends View {
   init(_props, cx) {
     this.saved = new Map();
-    this.entries = new Map(); this.folders = new Set(); this.pending = new Set(); this.marks = {}; this.ignored = new Set();
+    this.entries = new Map(); this.folders = new Set(); this.pending = new Set(); this.marks = {}; this.ignored = new Set(); this.treeHeight = 0; this.treeId = "files-tree"; this.treeSeq = 0;
     this.refresh(cx);
     cx.timer.every(10000, cx => this.refresh(cx));
     this.seenChange = shared("re-files.changed")?.at;
@@ -83,7 +83,7 @@ class Files extends View {
       if (this.context) this.saved.set(this.context.key, { folders: this.folders, file: this.file, kept });
       const saved = this.saved.get(next);
       this.context = { key: next, cwd, on }; this.root = cwd; this.on = on; this.entries = new Map(); this.folders = new Set(saved?.folders);
-      this.pending = new Set(); this.marks = {}; this.ignored = new Set(); this.show(null); this.watched = null; this.error = null; this.limited = false;
+      this.pending = new Set(); this.marks = {}; this.ignored = new Set(); this.treeHeight = 0; this.treeId = `files-tree-${++this.treeSeq}`; this.show(null); this.watched = null; this.error = null; this.limited = false;
       this.loading = false;
       if (saved?.kept) { this.file = saved.file; this.code = saved.kept.code; this.edit = saved.kept.edit; saved.kept = null; }
       else if (saved?.file) this.show(saved.file, cx);
@@ -209,6 +209,11 @@ class Files extends View {
     if (key() !== this.context?.key) this.refresh(cx);
     this.changed(cx);
     const t = theme();
+    // The tree stays mounted under the editor so its scroll position survives a
+    // file view. While a file is open, a spacer of the same height keeps the
+    // scroll range, without rebuilding thousands of rows on every keystroke.
+    const rows = this.file ? null : this.rows("", 0, [], t);
+    if (rows) this.treeHeight = rows.length * 28;
     return v_flex().id("files").size_full().min_h(0).rounded(10).overflow_hidden().bg(t.background).border_1().border_color(t.border).text_color(t.foreground).text_size(13)
       .child(h_flex().h(42).flex_none().px(14).gap(8).items_center().border_b(1).border_color(t.border)
         .when(Boolean(this.file), el => el.child(div().id("files-back").w(20).cursor_pointer().text_color(t.muted).on_click((_e, cx) => leave(this, cx)).child("←")))
@@ -219,11 +224,14 @@ class Files extends View {
           .on_click(() => this.previewMarkdown()).child("Preview")))
         .when(dirty(this), el => el.child(div().flex_none().text_color(t.foreground).child("●"))))
       .when(Boolean(this.file && this.edit?.conflict), el => el.child(conflictBar(this, t)))
-      .when(!this.file, el => el.child(v_flex().id("files-tree").flex_1().min_h(0).overflow_y_scrollbar().p(6).children(this.rows("", 0, [], t))
-        .when(Boolean(this.root), el => el.on_mouse_down("right", () => openMenu({ kind: "root", rel: "", name: this.root.split("/").pop() }, this.menuContext())))
-        .when(Boolean(this.error) || !this.entries.get("")?.length, el => el.child(div().p(8).text_size(12).text_color(t.dim).child(this.error || (this.loading ? "Loading files…" : this.root ? "No files" : "No folder"))))
-        .when(this.limited, el => el.child(div().p(8).text_size(11).text_color(t.dim).child("File list limited to 500 entries per folder and 5,000 total")))))
-      .when(Boolean(this.file), el => el.child(this.code ? Editor.new(this.code).flex_1().min_h(0) : div().p(12).text_color(t.dim).child(this.fileError || "Loading file…")));
+      .child(v_flex().relative().flex_1().min_h(0)
+        .child(v_flex().id(this.treeId).size_full().overflow_y_scrollbar().p(6)
+          .children(rows ?? (this.treeHeight ? [div().h(this.treeHeight)] : []))
+          .when(!this.file && Boolean(this.root), el => el.on_mouse_down("right", () => openMenu({ kind: "root", rel: "", name: this.root.split("/").pop() }, this.menuContext())))
+          .when(!this.file && (Boolean(this.error) || !this.entries.get("")?.length), el => el.child(div().p(8).text_size(12).text_color(t.dim).child(this.error || (this.loading ? "Loading files…" : this.root ? "No files" : "No folder"))))
+          .when(!this.file && this.limited, el => el.child(div().p(8).text_size(11).text_color(t.dim).child("File list limited to 500 entries per folder and 5,000 total"))))
+        .when(Boolean(this.file), el => el.child(v_flex().absolute().inset_0().bg(t.background)
+          .child(this.code ? Editor.new(this.code).flex_1().min_h(0) : div().p(12).text_color(t.dim).child(this.fileError || "Loading file…")))));
   }
 }
 

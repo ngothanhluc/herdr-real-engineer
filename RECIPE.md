@@ -375,6 +375,10 @@ removed lines.
 - **Leaving** with unsaved edits (the `←`) opens Unsaved changes: Save saves
   and goes back, Discard goes back, Cancel stays. Switching to another pane's
   folder keeps the edits, and coming back shows them.
+- **The tree stays mounted** under the editor. While a file is open it draws a
+  spacer of the same height, so the scroll offset survives the file view and
+  going back lands where the tree was. The tree's id changes only when the
+  folder does, so another folder starts at the top.
 
 ### Git panel
 
