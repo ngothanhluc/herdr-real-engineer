@@ -18,7 +18,7 @@ export const MENU = [
   { id: "copy-relative", label: "Copy Relative Path", icon: "copy", when: entry, action: (t) => ({ type: "copy", text: t.rel }) },
   { id: "copy-name", label: "Copy Name", icon: "copy", action: (t) => ({ type: "copy", text: t.name }) },
   { id: "reveal", label: "Reveal in Finder", icon: "search", when: local, action: (t, c) => ({ type: "exec", argv: ["open", "-R", absPath(c, t.rel)] }) },
-  { id: "editor", label: "Open in VS Code", icon: "code", when: local, action: (t, c) => ({ type: "editor", path: absPath(c, t.rel) }) },
+  { id: "editor", label: "Open in editor", icon: "code", when: local, action: (t, c) => ({ type: "editor", path: absPath(c, t.rel) }) },
   { id: "terminal", label: "Open in Terminal", icon: "terminal", action: (t, c) => ({ type: "tab", folder: absPath(c, folderOf(t)) }) },
   SEP,
   { id: "new-file", label: "New File…", icon: "file-plus", action: () => ({ type: "dialog", kind: "new-file" }) },
@@ -69,7 +69,7 @@ export function dialogFor(kind, target, ctx, editor) {
     case "new-folder": return { title: "New Folder", input: { label: inside, value: "" }, confirm: "Create" };
     case "rename": return { title: `Rename ${what}`, input: { label: "New name", value: target.name }, confirm: "Rename" };
     case "delete": return { title: `Move ${what} to Trash`, detail: `Move "${target.rel}" to the Trash?`, confirm: "Move to Trash", danger: true };
-    case "editor": return { title: "Editor command", detail: "Open in VS Code runs this program with the path as its argument.", input: { label: "Command", value: editor }, confirm: "Save" };
+    case "editor": return { title: "Editor command", detail: "Open in editor runs this program with the path as its argument.", input: { label: "Command", value: editor }, confirm: "Save" };
     case "leave": return { title: "Unsaved changes", detail: `Save your changes to "${target.name}"?`, confirm: "Save", discard: "Discard" };
     default: return null;
   }

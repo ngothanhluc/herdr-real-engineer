@@ -11,8 +11,7 @@ export const SIGN = 12;
 export const PAD = 12;
 export const DIVIDER = 1;
 
-// The width a pane needs before two columns beat one. VS Code defaults its
-// automatic diff layout to the same number.
+// The width a pane needs before two columns beat one.
 export const BREAKPOINT = 900;
 
 export const MODE_KEY = "re-git-graph.diffLayout";

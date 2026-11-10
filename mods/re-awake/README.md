@@ -1,8 +1,8 @@
 # re-awake
 
-Keeps this Mac awake, like Orca's Awake setting: **On** always, **Agent** while
-an agent on this computer is working, **Off** never. Written for the Real
-Engineer layout, which puts it in a 30px block above the sidebar footer.
+Keeps this Mac awake: **On** always, **Agent** while an agent on this computer
+is working, **Off** never. Written for the Real Engineer layout, which puts it
+in a 30px block above the sidebar footer.
 
 macOS only, through tools that ship with it:
 

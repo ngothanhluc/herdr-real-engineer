@@ -12,24 +12,26 @@ the Git view.
 
 ![Real Engineer](preview.png)
 
-The commit graph in `mods/re-git-graph/` started as
-[rabeeh-ta/herdr-git-graph](https://github.com/rabeeh-ta/herdr-git-graph) and is
-now a fork of it. See [Credits](#credits).
+The mods live in `mods/`. Two of them start from shipped Herdr mods and stay
+small by keeping local changes as a patch over the shipped file. See
+[MAINTAINING.md](MAINTAINING.md).
 
 ## What's in it
 
 | Path | What it is |
 |------|------------|
 | `layouts/real-engineer.json` | Herdr's `main` layout. The top bar uses `re-tabs`, the Files panel uses `re-files`, and the side panel stack `panel-body` has a third child, `graph`, showing `re-git-graph`. |
-| `mods/re-tabs/` | A clone of Herdr's `tabs` mod (`cloned_from` 0.1.14). |
-| `mods/re-files/` | A clone of Herdr's `files` mod (`cloned_from` 0.1.14). |
-| `mods/re-git-graph/` | A fork of rabeeh-ta's git-graph 0.3.0: renamed, a branch filter, a find bar, the Pull request tab, local changes in the graph's uncommitted row, and a Config tab that sets the repository's `user.name` and `user.email`. No longer synced with upstream. |
+| `mods/re-tabs/` | The tab bar, with Files and Git panel keys. |
+| `mods/re-files/` | The Files panel, with a right-click menu and an editable preview. |
+| `mods/re-git-graph/` | The commit graph, with a branch filter, a find bar, the Pull request tab, local changes in its uncommitted row, and a Config tab that sets the repository's `user.name` and `user.email`. |
 | `mods/re-awake/` | On, Agent, Off: keeps this Mac awake with `caffeinate`, on demand or while an agent on it works. macOS only. |
 | `mods/re-markdown/` | A read-only Markdown window for the focused pane's folder. `cmd-shift-m`. |
 | `docs/git-config.md` | What the Config tab sets and how Git resolves an identity. |
 | `keys.json` | The keys the layout expects. Merge it into yours. |
 | `install.sh` | Copies the mods and the layout into `~/.config/herdr-app`. |
 | `RECIPE.md` | The brief to build the layout from scratch. |
+| `MAINTAINING.md` | How to merge a Herdr update into the mods. |
+| `tools/sync.mjs`, `sync/` | The patches and the tool that applies them. |
 
 ## What each mod adds
 
@@ -50,7 +52,7 @@ Everything else is Herdr's tab bar as of 0.1.14.
 
 - **Right-click** a file, a folder, or the empty part of the tree:
   - Copy Path, Copy Relative Path, Copy Name.
-  - Reveal in Finder (`open -R`) and Open in VS Code. These two show only for
+  - Reveal in Finder (`open -R`) and Open in editor. These two show only for
     spaces on this computer.
   - Open in Terminal: a new tab in that folder, or in a file's folder.
   - New File, New Folder, Rename, Duplicate (`a copy.txt`, then
@@ -75,13 +77,10 @@ Everything else is Herdr's tab bar as of 0.1.14.
 
 ### re-git-graph: the commit graph
 
-A commit graph in the spirit of VS Code's
-[Git Graph](https://github.com/mhutchie/vscode-git-graph) extension.
-[rabeeh-ta](https://github.com/rabeeh-ta) wrote it as a native Herdr mod — no
-web view, no code from the VS Code extension — and this repository adds the
-branch filter, the find bar and the rename. See [Credits](#credits).
+A commit graph drawn as a native Herdr mod: no web view, no embedded browser.
+It has a branch filter, a find bar, a Pull request tab and a Config tab.
 
-- **The graph.** Git Graph's table (graph, description, date, and when there's
+- **The graph.** The table (graph, description, date, and when there's
   room, author and commit), newest first, with a lane per branch and curves where
   branches fork and merge. Merge commits are muted.
 - **Branch filter.** A dropdown in the toolbar: All branches, Current, or any
@@ -92,9 +91,8 @@ branch filter, the find bar and the rename. See [Credits](#credits).
   hex characters) match. Rows are never hidden. Enter and shift-Enter step
   through the matches. Stepping past the last loaded match loads more history,
   up to 2000 commits.
-- **Many repositories (Git Graph).** Focus a terminal in a folder that holds
-  repositories, and the panel lists them, grouped by folder, after
-  [upstream manygit](https://github.com/rabeeh-ta/manygit). Each row shows its branch,
+- **Many repositories.** Focus a terminal in a folder that holds
+  repositories, and the panel lists them, grouped by folder. Each row shows its branch,
   uncommitted changes, and whether it's ahead (↑) or behind (↓) its upstream,
   not pushed, or has no remote. Click one for its graph. Its name in the header
   drops the list down to switch to another, and **‹ Git** goes back.
@@ -148,8 +146,8 @@ stays in the dialog.
 
 A row above the footer: a coffee icon, the word **Awake**, and three pills.
 **On** holds the Mac awake until you turn it off. **Agent** holds it only while
-an agent on this computer is working — the same idea as Orca's Awake setting —
-and lets go when they all finish. **Off** lets macOS sleep as usual.
+an agent on this computer is working, and lets go when they all finish. **Off**
+lets macOS sleep as usual.
 `cmd-shift-a` cycles them, and the choice is remembered.
 
 The icon turns `accent` while the assertion is up. When it can't start, it
@@ -176,7 +174,7 @@ window in place instead of stacking a second one.
 
 ### Review: local changes and Pull request
 
-The Git panel has three tabs: **Git Graph**, **Pull request** and **Config**. Local
+The Git panel has three tabs: **Git**, **Pull request** and **Config**. Local
 changes are the graph's own top row, **Uncommitted changes**: selecting it
 lists the changed files with their added and deleted lines, and a file opens
 its diff. `cmd-shift-r` shows the panel on that row. A layout without a `graph`
@@ -211,9 +209,9 @@ the network.
   the list shows). Git reaches the network only when you press Fetch, Fetch
   all, Pull, Push, or delete a remote branch. Every git call is an argument
   list, never a shell, and names you type can't start with `-`.
-- **re-git-graph** also makes one request of its own, inherited from upstream:
-  at most once a day it asks GitHub's public API for this repository's latest
-  release (`api.github.com/repos/ngothanhluc/herdr-real-engineer/releases/latest`),
+- **re-git-graph** also makes one request of its own: at most once a day it
+  asks GitHub's public API for this repository's latest release
+  (`api.github.com/repos/ngothanhluc/herdr-real-engineer/releases/latest`),
   with no token and nothing about you or your repositories. To stop it, click
   **Stop checking** in the update window, or set `CHECK = false` in
   `mods/re-git-graph/update.js`.
@@ -289,21 +287,20 @@ so new default shortcuts in later Herdr releases must be added by hand.
 ## Limits
 
 - Tested on Herdr app 0.1.14 on macOS. Linux and Windows aren't tested.
-- `re-tabs` and `re-files` are clones. They don't get Herdr's updates to `tabs`
-  and `files`. After a Herdr update, compare `cloned_from.version` in their
-  `mod.json` with the new version, and clone again if the shipped mods changed.
+- `re-tabs` and `re-files` start from shipped Herdr mods. After a Herdr update,
+  run `node tools/sync.mjs --check`; see [MAINTAINING.md](MAINTAINING.md).
 - The preview edits only files on this computer, up to 1 MiB.
 - Delete needs `/usr/bin/trash`, which recent macOS has. In a space on another
   machine it fails unless that machine has it too.
 - Find matches a commit's subject line, author, branch and tag names, and hash
   prefix. It doesn't search message bodies or changed files.
-- Git Graph needs `find` and `env`, so it works on macOS and Linux, not Windows.
+- The repository list needs `find` and `env`, so it works on macOS and Linux, not Windows.
 - Herdr stops a command after 30 seconds, so a fetch, pull or push over a slow
   network, or a slow pre-commit hook, can fail there.
 - A very large history loads slower the first time if the repository has no
   commit-graph file. `git commit-graph write --reachable` (or
   `git maintenance start`) in that repository fixes it.
-- Not in this version: pull in the graph (a Git Graph row's menu has it),
+- Not in this version: pull in the graph (a repository row's menu has it),
   interactive rebase, and per-file actions in commit details.
 - The review view's Pull request tab needs `gh`, signed in. Without it the tab
   says so and the Git tab's uncommitted row still works.
@@ -316,13 +313,9 @@ so new default shortcuts in later Herdr releases must be added by hand.
 
 ## Development
 
-`mods/re-git-graph/` is a fork of rabeeh-ta's git-graph, not a subtree. There is
-no upstream sync: changes here stay here, and upstream releases have to be
-diffed by hand if you want one. `mods/re-git-graph/LICENSE` keeps rabeeh-ta's
-notice.
-
 ```sh
 npm test                                     # every tests/*.test.mjs, also run in CI
+node tools/sync.mjs --check                  # re-tabs and re-files match their patches
 ./install.sh                                 # copy the mods and layout into Herdr
 herdr-app check ~/.config/herdr-app/mods/re-git-graph   # and re-files, re-tabs
 ```
@@ -335,29 +328,10 @@ file operations, and the review view's diff parsing and `gh` argv.
 When behavior changes, update `RECIPE.md` so the recipe still builds what the
 layout does.
 
-## Credits
-
-- The commit graph (`mods/re-git-graph/`) is
-  [herdr-git-graph](https://github.com/rabeeh-ta/herdr-git-graph) by
-  [rabeeh-ta](https://github.com/rabeeh-ta), MIT, v0.3.0. It is forked, renamed,
-  and extended with the branch filter, the find bar and the review tabs. Bugs in
-  those additions are this repo's.
-- `mods/re-tabs/`, `mods/re-files/` and `layouts/real-engineer.json` start from
-  the `tabs`, `files` and `main` files that ship with Herdr 0.1.14
-  ([herdrdev/herdr-app](https://github.com/herdrdev/herdr-app), Apache-2.0).
-- Most icons are drawn after [Lucide](https://lucide.dev) (ISC, see
-  `mods/re-git-graph/icons/LICENSE-lucide.txt`,
-  `mods/re-files/icons/LICENSE-lucide.txt` and
-  `mods/re-awake/icons/LICENSE-lucide.txt`).
-
-This is a community layout. Herdr's authors and rabeeh-ta did not write,
-review or endorse it.
-
 ## License
 
-The work written here is MIT, see [LICENSE](LICENSE). The code the mods start
-from keeps its own license: Herdr's mods and layout are Apache-2.0
-([LICENSE-APACHE-2.0.txt](LICENSE-APACHE-2.0.txt)), and
-`mods/re-git-graph/` keeps rabeeh-ta's MIT notice in
-`mods/re-git-graph/LICENSE`. [THIRD-PARTY.md](THIRD-PARTY.md) lists every part,
-its version and what changed.
+The work written here is MIT, see [LICENSE](LICENSE). Code that came from
+Herdr's shipped mods and layout keeps Apache-2.0
+([LICENSE-APACHE-2.0.txt](LICENSE-APACHE-2.0.txt)). The notice for the code in
+`mods/re-git-graph/` is in [mods/re-git-graph/LICENSE](mods/re-git-graph/LICENSE).
+Icon notices are in each `icons/LICENSE-*.txt`.

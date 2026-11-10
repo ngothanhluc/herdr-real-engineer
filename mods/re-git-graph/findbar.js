@@ -1,6 +1,6 @@
-// The graph's find bar (cmd-f or the search button), as VS Code Git Graph's:
-// rows that match are highlighted, never hidden. Enter/shift-Enter step through
-// them; stepping past the last loaded match loads more history, up to FIND_MAX commits.
+// The graph's find bar (cmd-f or the search button). Matching rows are
+// highlighted, never hidden. Enter/shift-Enter step through them; stepping past
+// the last loaded match loads more history, up to FIND_MAX commits.
 import { div, svg } from "gpui-kit";
 import { h_flex, InputState, Input } from "gpui-base";
 import { icon } from "./menu.js";

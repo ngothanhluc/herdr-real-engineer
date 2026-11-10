@@ -10,10 +10,10 @@ import { Shell } from "./shell.js";
 import Review from "./review.js";
 import DiffWindow from "./diff-window.js";
 
-// One mod, several roles: the Git Graph panel (a shell with the graph and the
-// review view as tabs), a review pane opened by a layout without a Git Graph
+// One mod, several roles: the Git panel (a shell with the graph and the
+// review view as tabs), a review pane opened by a layout without a Git
 // block (`props.view`), and over the window the right-click menu, the dialogs
-// its actions ask first, the identity confirm, the update window, the Git Graph
+// its actions ask first, the identity confirm, the update window, the Git
 // settings and the branch filter (props.role).
 export default class GitGraph extends View {
   init(_props, cx) {

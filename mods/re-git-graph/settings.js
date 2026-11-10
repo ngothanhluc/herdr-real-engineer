@@ -1,4 +1,4 @@
-// The gear's popup, opened with props { role: "settings" }: Git Graph's scan depth
+// The gear's popup, opened with props { role: "settings" }: The scan depth
 // and whether rows show their newest tag. Each applies at once.
 import { div, svg } from "gpui-kit";
 import { v_flex, h_flex, InputState, Input } from "gpui-base";

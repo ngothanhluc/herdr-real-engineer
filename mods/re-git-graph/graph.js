@@ -1,6 +1,6 @@
-// The graph itself: Git Graph's table (graph, description, date, author,
-// commit) for the focused pane's repository, or `props.folder` when opened as
-// a pane. Labels take double-clicks (checkout) and right-clicks (menus).
+// The graph's table for the focused pane's repository, or `props.folder`
+// when opened as a pane. Labels take double-clicks (checkout) and right-clicks
+// (menus).
 import { div, svg, PathBuilder } from "gpui-kit";
 import { v_flex, h_flex, Scrollbar, v_virtual_list, VirtualListScrollHandle } from "gpui-base";
 import { spaces, panes, focused, exec, watchFolder, readTextFile, theme, settings, props, shared, setShared, openOverlay, home, notify, knownAgents, updates, nextCommand } from "herdr";
@@ -73,8 +73,8 @@ const SEEN = 24, DETAILS = 200;
 const keep = (map, key, value, max) => { map.delete(key); map.set(key, value); if (map.size > max) map.delete(map.keys().next().value); };
 
 // What belongs to one folder: a new folder starts from this, and leaving one keeps it.
-// workspace: the repositories under a folder that isn't one (Git Graph), their
-// statuses, and the one opened from that list (its graph shows until Back).
+// workspace: the repositories under a folder that isn't one, their statuses,
+// and the one opened from that list (its graph shows until Back).
 const folderState = () => ({
   state: "loading", root: null, on: null, cwd: null, error: null,
   workspace: null, statuses: new Map(), opened: null, skipped: false,
@@ -90,7 +90,7 @@ const folderState = () => ({
 async function readFolder(cwd, on, { filter, remotes, limit }) {
   const git = (args) => exec("git", [...READ, ...args], { cwd, on });
   let [top, log, head, current, branches, remoteNames, status] = await Promise.all([
-    // One commit past the page says whether there are more, as Git Graph asks.
+    // One commit past the page says whether there are more.
     exec("git", ["rev-parse", "--show-toplevel"], { cwd, on }), git(filterLogArgs(filter, { remotes, limit: limit + 1 })),
     git(["rev-parse", "--verify", "-q", "HEAD"]), git(["symbolic-ref", "-q", "--short", "HEAD"]),
     git(["for-each-ref", "--format=%(refname)", "refs/heads", "refs/remotes"]), git(["remote"]), git(STATUS)]);
@@ -123,7 +123,7 @@ async function readRepo(path, on, tags) {
   return st;
 }
 
-// Runs fn over items, at most `limit` at a time (Git Graph's 8).
+// Runs fn over items, at most `limit` at a time (8 at a time).
 async function pool(items, limit, fn) {
   let next = 0;
   await Promise.all(Array.from({ length: Math.min(limit, items.length) }, async () => { while (next < items.length) await fn(items[next++]); }));
@@ -146,9 +146,9 @@ export class Graph {
     this.diffLayout = ["auto", "split", "inline"].includes(shared(MODE_KEY)) ? shared(MODE_KEY) : "auto";
     this.diffWrap = shared(WRAP_KEY) === true;
     this.seen = new Map(); this.commitDetails = new Map();
-    // Fetch all: its progress for one Git Graph folder, and each repository's last failure.
+    // Fetch all: its progress for one repository-list folder, and each repository's last failure.
     this.fetchAll = null; this.fetchErrors = new Map();
-    // Git Graph's .git watchers, one per repository, kept while it's listed (see watchRepos).
+    // the repository list's .git watchers, one per repository, kept while it's listed (see watchRepos).
     this.watched = new Set();
     // Herdr's agents per machine, for a row's "New … tab" (as its + menu lists them).
     this.agents = new Map();
@@ -161,7 +161,7 @@ export class Graph {
     cx.spawn(async (cx) => { for (;;) { if (await nextCommand() === "find") { this.openFind(cx); cx.notify(); } } });
     cx.timer.after(1500, (cx) => this.warm(cx));
     // Remote spaces can't be watched: poll them gently. New folders get read ahead.
-    // The Git Graph list re-reads too: edits in a working tree don't touch .git.
+    // The repository list re-reads too: edits in a working tree don't touch .git.
     cx.timer.every(15000, (cx) => { if (!this.watching || this.state === "workspace") this.refresh(cx, true, true); this.warm(cx); check(); });
     check();
   }
@@ -194,7 +194,7 @@ export class Graph {
     }
   }
 
-  // Like Git Graph: read the folders open in other spaces ahead, one at a time, so switching to one shows it at once.
+  // Read the folders open in other spaces ahead, one at a time, so switching to one shows it at once.
   warm(cx) {
     if (this.folder || this.warming) return;
     const machineOf = new Map(spaces().flatMap((s) => s.tabs.map((tab) => [tab.id, s.machine ?? null])));
@@ -214,7 +214,7 @@ export class Graph {
           const remotes = this.remotes;
           const read = await readFolder(cwd, on, { filter: ALL, remotes, limit: PAGE }).catch(() => null);
           if (read && key !== this.context && !this.seen.has(key) && remotes === this.remotes) {
-            // A folder that isn't a repository may hold some: entering it searches (Git Graph).
+            // A folder that isn't a repository may hold some: entering it searches for repositories.
             keep(this.seen, key, { ...folderState(), state: read.state ?? "ready", ...read, warmed: read.state === "norepo" }, SEEN);
           }
         }
@@ -228,7 +228,7 @@ export class Graph {
     const { cwd, on } = location(this.folder), context = this.key();
     if (context !== this.context) { this.enter(context); full = true; }
     if (!cwd) { this.state = "nofolder"; return; }
-    // A repository opened from the Git Graph list loads in place of the folder.
+    // A repository opened from the repository list loads in place of the folder.
     const { filter, remotes, limit } = this, opened = this.opened;
     const loadKey = JSON.stringify([context, opened]);
     if (this.loading?.key === loadKey) { this.again = this.again === "full" || full ? "full" : "status"; return; }
@@ -271,7 +271,7 @@ export class Graph {
     });
   }
 
-  // Git Graph: find the repositories under cwd, then read each one's status.
+  // Find the repositories under cwd, then read each one's status.
   async scan(cwd, on, stale, cx, timer) {
     const depth = depthSetting();
     if (timer && this.state === "norepo" && this.cwd === cwd) return;
@@ -318,7 +318,7 @@ export class Graph {
     }
   }
 
-  // Git Graph's fetch: every repository with a remote, 8 at a time, each row
+  // Fetch all: every repository with a remote, 8 at a time, each row
   // updated as its fetch ends. It goes on in the background if you open a repository.
   fetchEvery(cx) {
     const ws = this.workspace;
@@ -637,7 +637,7 @@ export class Graph {
     const dot = div().absolute().left(x(row.lane) - 4).top(this.rowH() / 2 - 4).size(8).rounded(4);
     return div().relative().flex_none().w(width).h(this.rowH()).overflow_hidden()
       .children([...paths.values()].map(({ p, color }) => window.paint_path(p.build(), color).absolute().top(0).left(0).size_full()))
-      // HEAD is a ring, as in Git Graph; uncommitted changes a gray one.
+      // HEAD is a ring; uncommitted changes a gray one.
       .child(commit.head || commit.uncommitted ? dot.bg(t.background).border(2).border_color(color) : dot.bg(color));
   }
 
@@ -658,7 +658,7 @@ export class Graph {
 
   row(i, t, colors, mono, width) {
     const commit = this.commits[i], row = this.rows[i], color = colors[row.lane % colors.length];
-    // Merge commits are muted, as Git Graph does by default.
+    // Merge commits are muted.
     const fg = commit.uncommitted ? t.muted : commit.parents.length > 1 ? t.dim : t.foreground;
     return h_flex().id(`c-${commit.hash}`).w_full().h(this.rowH()).flex_none().pr(10).gap(LABEL.GAP).items_center().overflow_hidden()
       .when(commit.head, (e) => e.bg(color + "14")).when(this.selected === commit.hash, (e) => e.bg(t.selected))
@@ -684,7 +684,7 @@ export class Graph {
   header(t) {
     const ready = this.state === "ready" || this.state === "empty", ws = this.workspace;
     const where = this.current ?? (this.head ? `detached at ${this.head.slice(0, 8)}` : null);
-    // Opened from the Git Graph list: "‹ Git Graph" goes back to it, the repository's name
+    // Opened from the repository list: "‹ Git" goes back to it, the repository's name
     // drops the same rows down over the graph to switch to another.
     const repo = ws && this.opened ? ws.repos.find((r) => r.path === this.opened) : null;
     const settingsShown = this.state === "workspace" || (this.state === "norepo" && !this.skipped);
@@ -719,7 +719,7 @@ export class Graph {
     openOverlay({ mod: "re-git-graph", kind: "popup", at: "pointer", width: 240, height: 92, props: { role: "settings" } });
   }
 
-  // Git Graph's repository pane: grouped by folder, each row its branch, uncommitted
+  // The repository list: grouped by folder, each row its branch, uncommitted
   // changes and how it stands against its upstream. A click opens its graph.
   repoRows(t) {
     const repos = this.workspace.repos, grouped = repos.some((r) => r.group);
@@ -822,7 +822,7 @@ export class Graph {
       .on_mouse_down("left", (e) => { this.press = { x: (e.local_position?.x ?? 0) / this.unit(), count: e.click_count }; })
       .child(v_virtual_list(this.listId, count, this.listRow(), (i) => this.commits[i]?.hash ?? "more",
         (range, cx) => {
-          // Scrolling to the end loads the next page, as Git Graph does; the row also takes a click.
+          // Scrolling to the end loads the next page; the row also takes a click.
           if (range.end > this.commits.length && this.hasMore && !this.loading && this.moreAsked !== this.limit) {
             this.moreAsked = this.limit;
             cx.spawn(async (cx) => this.loadMore(cx));
@@ -945,7 +945,7 @@ export class Graph {
     if (!this.drag && seen !== this.seenCols) { this.seenCols = seen; this.cols = withDefaults(savedCols); }
     const fetched = shared("re-git-graph.fetched");
     if (fetched?.at !== this.seenFetched) { this.seenFetched = fetched?.at; if (fetched?.root) this.fetchErrors.delete(fetched.root); }
-    // After an action (here, or from a Git Graph row's menu) the graph or the list reads again.
+    // After an action (here, or from a repository row's menu) the graph or the list reads again.
     if (changed !== this.seenChange) { this.seenChange = changed; if (this.root || this.state === "workspace") this.refresh(cx); }
     // New settings: a depth searches again, tags read every row again.
     const setting = `${depthSetting()} ${tagsShown()}`;
@@ -966,7 +966,7 @@ export class Graph {
           return;
         }
         if (e.key !== "escape" || !(this.selected || this.opened)) return;
-        // Esc closes the dropdown, a diff, then the details, then goes back to the Git Graph list.
+        // Esc closes the dropdown, a diff, then the details, then goes back to the repository list.
         if (this.picking) this.picking = false; else if (this.diff) this.diff = null; else if (this.selected) { this.selected = null; this.details = null; } else this.back(cx);
         cx.stop_propagation(); cx.notify();
       })

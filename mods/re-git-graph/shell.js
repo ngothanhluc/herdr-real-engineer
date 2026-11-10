@@ -17,7 +17,7 @@ import Review from "./review.js";
 const TAB_REQUEST = "re-git-graph.tab";
 const REQUEST_FRESH_MS = 10000;
 
-const TABS = [["graph", "Git Graph"], ["pr", "Pull request"], ["config", "Config"]];
+const TABS = [["graph", "Git"], ["pr", "Pull request"], ["config", "Config"]];
 
 // A layout node by id, for "is this panel in front?" without asking the window.
 function find(node, id) {
@@ -97,10 +97,10 @@ export class Shell {
       .children(list.map(([id, label]) => this.tabButton(`re-git-graph-tab-${id}`, label, this.tab === id, (_e, cx) => this.show(id, cx), t)));
   }
 
-  // A repository with no identity of its own asks once a session, like VS Code's
-  // git-autoconfig: a commit there would borrow the global name and email,
-  // which is how a personal address ends up on a work repository. A hidden
-  // panel stays quiet and the question waits for the panel to be in front.
+  // A repository with no identity of its own asks once a session: a commit
+  // there would borrow the global name and email, which is how a personal
+  // address ends up on a work repository. A hidden panel stays quiet and the
+  // question waits for the panel to be in front.
   askIdentity(cx) {
     if (find(layout(), "panel")?.hidden) return;
     const root = this.graph.root, on = this.graph.on ?? null;

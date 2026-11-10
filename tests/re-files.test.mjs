@@ -13,7 +13,7 @@ const file = { kind: "file", rel: "src/a.txt", name: "a.txt" }, folder = { kind:
 
 assert.deepEqual(ids(menuFor(file, local)), ["copy-path", "copy-relative", "copy-name", "reveal", "editor", "terminal", "-", "new-file", "new-folder", "rename", "duplicate", "-", "delete"]);
 assert.deepEqual(ids(menuFor(root, local)), ["copy-path", "copy-name", "reveal", "editor", "terminal", "-", "new-file", "new-folder", "-", "set-editor"], "root: no rename/duplicate/delete, editor setting last");
-assert.deepEqual(ids(menuFor(folder, remote)), ["copy-path", "copy-relative", "copy-name", "terminal", "-", "new-file", "new-folder", "rename", "duplicate", "-", "delete"], "remote hides Finder and VS Code");
+assert.deepEqual(ids(menuFor(folder, remote)), ["copy-path", "copy-relative", "copy-name", "terminal", "-", "new-file", "new-folder", "rename", "duplicate", "-", "delete"], "remote hides Finder and the editor");
 assert.deepEqual(ids(menuFor(root, remote)), ["copy-path", "copy-name", "terminal", "-", "new-file", "new-folder"], "no dangling separator");
 
 const act = (id, t, c) => menuFor(t, c).find((i) => i.id === id).action(t, c);

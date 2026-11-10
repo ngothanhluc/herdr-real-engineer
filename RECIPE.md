@@ -5,10 +5,10 @@ agents on the left, terminals in the middle, and a side panel on the right that
 the top bar's **Files** and **Git** buttons open. Files is a tree
 with a right-click menu (copy paths, reveal, open in an editor or a terminal,
 new, rename, duplicate, move to Trash) and a preview you can edit and save with
-`cmd-s`. Git is a commit graph of the focused terminal's repository, after VS
-Code's Git Graph: colored lanes for every branch, labels for branches, remotes
-and tags, uncommitted changes as a dashed row on top, Git Graph's right-click
-menus, a branch filter dropdown and a `cmd-f` find bar.
+`cmd-s`. Git is a commit graph of the focused terminal's repository: colored
+lanes for every branch, labels for branches, remotes and tags, uncommitted
+changes as a dashed row on top, right-click menus, a branch filter dropdown and
+a `cmd-f` find bar.
 
 ![Real Engineer](preview.png)
 
@@ -57,12 +57,12 @@ folder and file icons, at most 500 entries per folder and 5,000 in all). Added:
   rows (radius 7, a 14px `muted` icon, 12.8px text), 1px `border` separators.
   Delete is `ansi1`. Rows, by what was right-clicked:
   - a file or folder: Copy Path, Copy Relative Path, Copy Name, Reveal in
-    Finder, Open in VS Code, Open in Terminal; New File…, New Folder…,
+    Finder, Open in editor, Open in Terminal; New File…, New Folder…,
     Rename…, Duplicate; Delete.
   - the tree's empty area (the root): Copy Path, Copy Name, Reveal in Finder,
-    Open in VS Code, Open in Terminal; New File…, New Folder…; Set editor
+    Open in editor, Open in Terminal; New File…, New Folder…; Set editor
     command….
-  - In a space on another machine, Reveal in Finder, Open in VS Code and Set
+  - In a space on another machine, Reveal in Finder, Open in editor and Set
     editor command… are left out.
 - **Dialogs**, 420px on `popover`, 18px padding: a 15px semibold title with
   `Esc` on the right, a `muted` sentence, a 36px input (radius 9, `accent`
@@ -91,10 +91,9 @@ bottom:
   shows), Fetch (arrow down, only when the repo has remotes; it says
   `Fetching…` while running) and Refresh, and Settings (a gear) on the Git
   list and when a folder holds none. When a newer release is out, an `accent`
-  dot and **Update Git** sit before them. No commit count, as in Git Graph.
-- **Git**, when the folder isn't a repository but holds some, after
-  [upstream manygit](https://github.com/rabeeh-ta/manygit)'s repository pane, in place of
-  the toolbar and table. The header reads `Git`, `N repos` in `dim`. Rows
+  dot and **Update Git** sit before them. No commit count.
+- **Git**, when the folder isn't a repository but holds some, as a repository
+  list in place of the toolbar and table. The header reads `Git`, `N repos` in `dim`. Rows
   grouped by the folder they're in (a 26px `dim` 11px heading, `group/`, `./`
   for the top; no headings when every repo is at the top), each 34px, indented
   28px under a heading (14px otherwise): the name at 11.5px (`accent` for the
@@ -352,7 +351,7 @@ removed lines.
 - **Right-click** a row opens its menu; right-clicking the tree's empty area
   opens the root's. Up/down/enter/esc work in the menu.
 - **Copy** writes the clipboard and toasts `Copied`. **Reveal in Finder** runs
-  `open -R <path>`. **Open in VS Code** runs the editor command with the path
+  `open -R <path>`. **Open in editor** runs the editor command with the path
   (`shared("re-files.editor")`, `code` by default); if that throws, it runs
   `open -a "Visual Studio Code" <path>`. A non-zero exit toasts "Couldn't open
   the editor". **Open in Terminal** runs `tab.new` with the folder (a file's
@@ -382,8 +381,7 @@ removed lines.
 - **Which repository**: the focused pane's live folder (`panes()[i].cwd`),
   else `focused().cwd`, else the space's folder, on the space's machine.
   Opened with `props.folder` (as a pane), always that folder. If it's a
-  repository, use it; otherwise it's a Git Graph folder when it holds
-  repositories. A home folder and any folder above it aren't searched: this
+  repository, use it; otherwise it's a folder that holds repositories. A home folder and any folder above it aren't searched: this
   machine's `home()`, and for another machine `/`, `/root`, `/home/<name>` and
   `/Users/<name>`. A new folder starts clean and loads at once; a slower load
   for the previous folder drops its result.
@@ -392,7 +390,7 @@ removed lines.
   the background and redraws only if something changed. The folders open in
   other spaces' panes are read ahead, one at a time: 1.5 s after start, then
   every 15 s for new ones. A commit's details are kept too (the last 200).
-- **Git Graph loading**: one `find -H <folder> -mindepth 1 -maxdepth <depth+1>`
+- **Repository list loading**: one `find -H <folder> -mindepth 1 -maxdepth <depth+1>`
   walk prints each `.git` and prunes there, and prunes hidden folders,
   `node_modules`, `vendor`, `venv`, `__pycache__`, `dist`, `build`, `target`,
   `site-packages` and `Library`; at most 500 repositories. Each row's status
@@ -486,7 +484,7 @@ removed lines.
   `{ "id": "awake", "type": "block", "size": { "px": 30 }, "content": { "mod": "re-awake" } }`.
   Everything else (sidebar, `workspace-chrome`, `spaces`, `agents`, `pane`,
   `changes`, `workspace-status`) is Herdr's shipped mods.
-- `mods/re-markdown/`: original. No upstream copy. One `main.js` with
+- `mods/re-markdown/`: one `main.js` with
   `displayText()` (front matter) at the top, and `mod.json` with the window
   overlay (`width: 900`, `height: 0.9`, `key: "re-markdown"`).
 - `mods/re-git-graph/review.js`, `review-diff.js`, `review-pr.js`: the review
@@ -494,8 +492,8 @@ removed lines.
   `tests/review-diff.test.mjs` and `tests/review-pr.test.mjs` run them under
   Node. `shell.js` puts the graph and the review view in one tabbed panel;
   `main.js` still picks a standalone review pane with `props.view === "review"`.
-- `mods/re-tabs/`: `herdr-app do mod.clone '{"name":"tabs","as":"re-tabs"}'``
-  (`mod.json` `cloned_from: { name: "tabs", version: "0.1.14" }`), then:
+- `mods/re-tabs/`: starts from Herdr's shipped `tabs`; `sync/re-tabs.patch`
+  holds the local delta. `main.js` adds:
   - a module-level `togglePanel(id)`: `layout.hide {id: "panel"}` when the
     panel shows `id`, else `layout.select {stack: "panel-body", child: id}`
     and `layout.show {id: "panel"}`. The panel buttons' `on_click` calls it.
@@ -506,8 +504,9 @@ removed lines.
     `find(root, "graph")`, and draws a `panelButton("graph", "Git",
     "mods/re-git-graph/icons/graph.svg")` after Files.
   - Its own `mods/re-tabs/win-*.svg` paths for the Windows buttons.
-- `mods/re-files/`: a clone of `files` (`cloned_from` 0.1.14). `main.js`
-  keeps Herdr's panel and adds `props().role`: none, the panel; `"menu"`
+- `mods/re-files/`: starts from Herdr's shipped `files`; `sync/re-files.patch`
+  holds the local delta. `main.js` keeps the panel and adds `props().role`:
+  none, the panel; `"menu"`
   (`openOverlay({ mod: "re-files", kind: "popup", at: "pointer", width: 240,
   height, props: { role: "menu", target, ctx } })`); `"dialog"` (`kind:
   "dialog", width: 420`; the leave dialog is `modal: true`). `ctx` is
@@ -523,12 +522,10 @@ removed lines.
   - Programs: `sh`, `open`, the editor command, `/usr/bin/trash`, `test`,
     `touch`, `mkdir`, `mv`, `cp`, through `exec(…, { on })`. Files:
     `readTextFile`, `writeTextFile`, `watchFolder`.
-  - Icons in `icons/` (Lucide-style, ISC notice there).
-- `mods/re-git-graph/`: a fork of rabeeh-ta's git-graph 0.3.0, no longer a
-  subtree and not synced with upstream. Every `git-graph` name (mod, shared
-  keys, element ids) became `re-git-graph`, and it gained a branch filter, a
-  find bar, and the review view (`review.js`, `review-diff.js`,
-  `review-pr.js`).
+  - Icons in `icons/`; the notice is in `icons/LICENSE-lucide.txt`.
+- `mods/re-git-graph/`: the commit graph. Every shared key and element id uses
+  `re-git-graph`. It has a branch filter, a find bar, and the review view
+  (`review.js`, `review-diff.js`, `review-pr.js`).
   `mod.json` `{ "place": "none" }`.
   - `main.js`: one `View` with six roles by `props().role`: none, the graph;
     `"menu"` (268px popup); `"dialog"` (420px, height from its fields);
@@ -539,7 +536,7 @@ removed lines.
     runs an action and opens dialogs; `git.js` everything git, no herdr import
     (log and status parsing, labels and their widths, the hit test, menus,
     dialogs, validation, argv per action); `lanes.js` the lane layout;
-    `repos.js` Git Graph's `find`, status parse and sync token; `settings.js`;
+    `repos.js` the repository list's `find`, status parse and sync token; `settings.js`;
     `update.js` (`VERSION`, `REPO`, `CHECK`).
   - Added in this repo: `query.js` (no herdr import: the filter shape
     `{kind: "all"} | {kind: "current"} | {kind: "refs", refs}`, its log args,
@@ -559,10 +556,10 @@ removed lines.
     element around it records each left press (`click_count`,
     `local_position.x`). Labels are drawn at computed widths, so `x` names the
     label part exactly.
-  - Its own icons in `icons/` (Lucide-style, ISC notice there). Commands:
+  - Its own icons in `icons/`; the notice is in `icons/LICENSE-lucide.txt`. Commands:
     `layout.select` / `layout.show` (`panel-body` → `files` or `graph`,
     `panel`). Programs: `git`, and
-    `find` and `env` for Git Graph, through `exec(…, { cwd, on })`. Network:
+    `find` and `env` for the repository list, through `exec(…, { cwd, on })`. Network:
     the update check's `fetch`.
 - `keys.json`: `layout:real-engineer` (`cmd-shift-e` → `re-tabs.files`,
   `cmd-shift-g` → `re-tabs.graph`), `mod:re-files` (`cmd-s` →
@@ -587,10 +584,9 @@ removed lines.
   pid is ever reused, `-t 3600` ends the assertion within the hour, and the 20s
   poll starts it again if the mode still wants it.
 
-- `re-tabs` and `re-files` are clones of shipped mods. They don't get Herdr's
-  updates to `tabs` and `files`. After a Herdr update, compare
-  `cloned_from.version` in their `mod.json` with the new version, and redo the
-  edits on a fresh clone if the shipped mod changed.
+- `re-tabs` and `re-files` start from shipped mods. They don't get Herdr's
+  updates by themselves. After a Herdr update, run `node tools/sync.mjs
+  --check`; see [MAINTAINING.md](MAINTAINING.md).
 - Merging `keys.json` makes the person's keys file theirs: any edit keeps the
   whole file, and new default shortcuts from later Herdr releases must be
   added by hand. Ask before replacing a key they already use.
@@ -605,7 +601,7 @@ removed lines.
 - The editable preview is local only: `writeTextFile` works only on this
   computer, so a remote file stays read-only. `readTextFile` caps a file at
   1 MiB (per the code's comment); a larger file shows "Cannot preview this file".
-- In a space on another machine, Reveal in Finder, Open in VS Code and Set
+- In a space on another machine, Reveal in Finder, Open in editor and Set
   editor command are hidden. Delete still shows there and runs
   `/usr/bin/trash` on that machine, which fails where it doesn't exist.
 - `/usr/bin/trash` ships with recent macOS only. `open -R` and
@@ -646,8 +642,8 @@ removed lines.
   layout.
 - Herdr's `exec` stops a command after 30 s: a slow fetch, pull, push or
   pre-commit hook fails there.
-- Tested on Herdr app 0.1.14 on macOS. Untested: Linux, Windows. Git Graph needs
-  `find` and `env`, so not Windows.
+- Tested on Herdr app 0.1.14 on macOS. Untested: Linux, Windows. The repository
+  list needs `find` and `env`, so not Windows.
 
 ## Done when
 

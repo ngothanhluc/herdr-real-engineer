@@ -84,7 +84,7 @@ export function labelsOf(commit, remotesShown = true) {
   for (const ref of commit.refs) {
     if (ref.kind === "detached") labels.push({ kind: "head", head: true, parts: [{ kind: "head", name: "HEAD", text: "HEAD" }] });
     if (ref.kind !== "branch") continue;
-    // A remote branch with the same name rides on its local branch's label, as in Git Graph.
+    // A remote branch with the same name rides on its local branch's label.
     const parts = [{ kind: "branch", name: ref.name, text: fit(ref.name, LABEL.MAX), icon: true, head: ref.head }];
     for (const remote of remotes) {
       const slash = remote.name.indexOf("/");
@@ -130,8 +130,8 @@ const currentName = (ctx) => ctx.current ?? "HEAD";
 const section = (...items) => items.filter(Boolean);
 const item = (label, icon, action) => ({ label, icon, action });
 
-// The right-click menu for a commit, a label part or the uncommitted row:
-// Git Graph's menus, minus what needs VS Code. Sections are separated.
+// The right-click menu for a commit, a label part or the uncommitted row.
+// Sections are separated.
 export function menuFor(target, ctx) {
   if (target.kind === "repo") return repoMenu(target, ctx);
   const cur = currentName(ctx), c = target.commit;
@@ -198,7 +198,7 @@ const remoteChoice = (ctx) => ({ id: "remote", label: "Remote", value: ctx.remot
 const mergeNote = (a) => (a.merge ? " It's a merge commit: its changes against its first parent are used." : "");
 
 // The dialog an action asks first, or null when it runs at once.
-// A Git Graph row's menu. Herdr's own first: an agent's tab (most picked first, as
+// A repository row's menu. Herdr's own first: an agent's tab (most picked first, as
 // its + menu) or a terminal in the repository. Then what the row's ↑/↓ asks for,
 // its uncommitted changes, and its links.
 function repoMenu(r, ctx) {
@@ -333,7 +333,7 @@ export function commandsFor(a, v = {}, ctx = {}) {
     case "pushTag": return [["push", v.remote, `refs/tags/${a.name}`]];
     // The message is -m's own argument, so one starting with "-" stays a message.
     case "commit": return [...(v.all ? [["add", "--all"]] : []), ["commit", "-m", message]];
-    // Fast-forward only, as Git Graph pulls: never a merge or a rebase.
+    // Fast-forward only, because a pull is fast-forward only: never a merge or a rebase.
     case "pull": return [["pull", "--ff-only", "--quiet"]];
     case "stash": return [["stash", "push", ...(v.untracked ? ["--include-untracked"] : []), ...(message ? ["-m", message] : [])]];
     case "resetUncommitted": return [["reset", `--${v.mode}`, "HEAD"]];

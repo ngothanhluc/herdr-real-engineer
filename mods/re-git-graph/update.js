@@ -21,7 +21,7 @@ export function newer(a, b) {
 }
 
 // Kept in shared state: it lasts across restarts and every graph copy sees it.
-// A result saved for another repository (a fork, a test) counts as never checked.
+// A result saved for another repository counts as never checked.
 const state = () => { const s = shared("re-git-graph.update") ?? {}; return s.repo === REPO ? s : { off: s.off }; };
 const save = (change) => setShared("re-git-graph.update", { ...state(), ...change, repo: REPO });
 

@@ -1,4 +1,4 @@
-// From rabeeh-ta/herdr-git-graph (MIT, see mods/re-git-graph/LICENSE), adapted to re-git-graph.
+// The graph's labels, menus, validation and actions, against real repositories.
 // Tests the mod's git logic against real throwaway repos (a bare "remote"
 // included): parsing, labels and where they sit, lanes, menus, validation,
 // and every action the menus run. Run: node tests/graph.test.mjs
@@ -309,7 +309,7 @@ console.log("untrusted history ok");
 rmSync(base, { recursive: true, force: true });
 // ---- Manygit: finding repositories under a folder, and one status call each
 {
-  const ws = mkdtempSync(join(tmpdir(), "herdr-manygit-"));
+  const ws = mkdtempSync(join(tmpdir(), "herdr-repos-"));
   const mk = (rel) => { const d = join(ws, rel); mkdirSync(d, { recursive: true }); sh(d, "init", "-q", "-b", "main"); return d; };
   const a = mk("a"); mk("b"); mk("group/c"); mk("node_modules/pruned"); mk(".hidden/pruned"); mk("one/two/three/deep");
   mkdirSync(join(ws, "plain/folder"), { recursive: true });
@@ -341,7 +341,7 @@ rmSync(base, { recursive: true, force: true });
   sh(a, "add", "a1.txt"); assert.equal(status(a).staged, 1, "one staged"); sh(a, "reset", "-q");
   assert.equal(R.syncOf(status(a)).text, "↑1");
   sh(a, "reset", "-q", "--hard", "HEAD~1"); sh(a, "commit", "-q", "--allow-empty", "-m", "other"); sh(a, "fetch", "-q");
-  const other = mkdtempSync(join(tmpdir(), "herdr-manygit-clone-")); sh(other, "clone", "-q", bare, "c"); commit(join(other, "c"), "theirs"); sh(join(other, "c"), "push", "-q");
+  const other = mkdtempSync(join(tmpdir(), "herdr-repos-clone-")); sh(other, "clone", "-q", bare, "c"); commit(join(other, "c"), "theirs"); sh(join(other, "c"), "push", "-q");
   sh(a, "fetch", "-q");
   assert.deepEqual([status(a).ahead, status(a).behind], [1, 1]); assert.equal(R.syncOf(status(a)).kind, "diverged");
   sh(a, "checkout", "-qb", "local-only");
@@ -364,7 +364,7 @@ rmSync(base, { recursive: true, force: true });
   // A row's menu: Herdr's tabs first, then what its ↑/↓ asks for first.
   const remotes = R.parseRemotes(git(a, R.REMOTES).stdout);
   assert.deepEqual(remotes, [{ name: "origin", url: bare }]);
-  assert.equal(R.webUrl("git@github.com:rabeeh-ta/manygit.git"), "https://github.com/rabeeh-ta/manygit");
+  assert.equal(R.webUrl("git@github.com:acme/demo.git"), "https://github.com/acme/demo");
   assert.equal(R.webUrl("ssh://git@gitlab.com/group/sub/repo.git"), "https://gitlab.com/group/sub/repo");
   assert.equal(R.webUrl("https://user:token@github.com/o/r.git"), "https://github.com/o/r", "credentials never reach the browser");
   assert.equal(R.webUrl(bare), null); assert.equal(R.webUrl("file:///srv/r.git"), null);
@@ -396,7 +396,7 @@ rmSync(base, { recursive: true, force: true });
   sh(a, "checkout", "-q", "main");
   assert.equal(R.syncOf(undefined).kind, "loading"); assert.equal(R.syncOf({ error: "dubious ownership" }).kind, "error");
   rmSync(ws, { recursive: true, force: true }); rmSync(other, { recursive: true, force: true });
-  console.log("manygit ok");
+  console.log("repository list ok");
 }
 
 // Keep the original CI entry point running the action-context regressions too.

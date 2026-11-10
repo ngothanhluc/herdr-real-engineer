@@ -1,4 +1,4 @@
-// From rabeeh-ta/herdr-git-graph (MIT, see mods/re-git-graph/LICENSE), adapted to re-git-graph.
+// What a graph action reads from the pointer, the keyboard and the focused repository.
 // Exercise the execution path used by both dialogs and direct menu actions.
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";

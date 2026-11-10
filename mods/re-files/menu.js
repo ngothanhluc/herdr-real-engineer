@@ -5,7 +5,7 @@ import { v_flex, h_flex } from "gpui-base";
 import { props, closeOverlay, openOverlay, notify, theme, run, exec, shared, setShared } from "herdr";
 import { menuFor, menuHeight, dialogFor, dialogHeight, duplicate } from "./ops.js";
 
-export const icon = (name) => `mods/re-files/icons/${name}.svg`;
+const icon = (name) => `mods/re-files/icons/${name}.svg`;
 export const editorCommand = () => shared("re-files.editor") || "code";
 
 // Tells the panel to reload its tree and show `reveal` (a rel path).

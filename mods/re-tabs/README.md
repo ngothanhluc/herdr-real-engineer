@@ -1,9 +1,8 @@
 # re-tabs
 
-Herdr's `tabs` mod from app 0.1.13 (Apache-2.0, part of
-[herdrdev/herdr-app](https://github.com/herdrdev/herdr-app)), renamed and
-changed for the Real Engineer layout. The Apache-2.0 text is in
-[../../LICENSE-APACHE-2.0.txt](../../LICENSE-APACHE-2.0.txt).
+The tab bar for the Real Engineer layout. It starts from Herdr's shipped
+`tabs` mod; `sync/re-tabs.patch` holds the local delta. The Apache-2.0 text is
+in [../../LICENSE-APACHE-2.0.txt](../../LICENSE-APACHE-2.0.txt).
 
 Changed here:
 
@@ -16,5 +15,5 @@ Changed here:
 - The key commands `re-tabs.files` and `re-tabs.graph` do the same from
   `nextCommand`.
 
-Everything else is Herdr's mod as shipped. `main.js` says at the top that it
-was changed.
+Everything else is the shipped tab bar. After a Herdr update, run
+`node tools/sync.mjs --check`.

@@ -107,7 +107,7 @@ export default class Review extends View {
     const loc = here();
     this.root = this.propRoot || loc.root || null;
     this.on = p.on ?? loc.on;
-    // Inside the Git Graph shell the shell draws the tabs and the card; the
+    // Inside the Git panel the shell draws the tabs and the card; the
     // review view is idle until its tab comes to the front.
     this.embedded = Boolean(p.embedded);
     this.active = p.active !== false;

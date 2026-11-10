@@ -1,17 +1,14 @@
 # re-git-graph
 
-[rabeeh-ta/herdr-git-graph](https://github.com/rabeeh-ta/herdr-git-graph) v0.3.0
-(commit `af1492f`), MIT, pulled into this repository as a squashed `git subtree`
-so its history stays with it. `scripts/update-git-graph.sh` refreshes it.
+The commit graph and its tabs. The notice for the code this mod started from
+is in [LICENSE](LICENSE) and is not changed.
 
-rabeeh-ta's copyright and permission notice is in [LICENSE](LICENSE) and is not
-changed. Changes made here:
+How it is built:
 
-- Renamed from `git-graph` to `re-git-graph`: the mod folder, the mod's own
-  paths, the shared-state keys (`re-git-graph.*`), and the keys a pane takes.
+- The mod folder, its paths, the shared-state keys (`re-git-graph.*`) and the
+  keys a pane takes all use `re-git-graph`.
 - The update check asks `ngothanhluc/herdr-real-engineer` for its latest
-  release instead of the upstream repo. `VERSION` in `update.js` matches this
-  repository's release tag.
+  release. `VERSION` in `update.js` matches this repository's release tag.
 - A branch filter dropdown in the toolbar: all, current, or a chosen set of
   local and remote branches.
 - A find bar on `cmd-f`: matches are highlighted, never hidden, and Enter
@@ -22,6 +19,3 @@ changed. Changes made here:
   repository's `user.name` and `user.email` from a list of pairs used before,
   after a confirm, and asks once for a repository that has no identity of its
   own.
-
-Bugs in those additions are this repository's; bugs in the rest belong
-upstream, and are worth an issue there.
