@@ -3,3 +3,6 @@ gpui-kit.d.ts
 jsconfig.json
 .DS_Store
 node_modules/
+
+# Rejected sync hunks, kept for inspection until the merge is resolved.
+sync/rejects/

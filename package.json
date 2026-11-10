@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "for t in tests/*.test.mjs; do node \"$t\" || exit 1; done"
+    "test": "node tools/sync.mjs --check && for t in tests/*.test.mjs; do node \"$t\" || exit 1; done",
+    "sync": "node tools/sync.mjs --generate"
   }
 }

@@ -1,0 +1,11 @@
+{
+  "herdr": "0.1.14",
+  "mods": {
+    "re-tabs": {
+      "from": "tabs"
+    },
+    "re-files": {
+      "from": "files"
+    }
+  }
+}
