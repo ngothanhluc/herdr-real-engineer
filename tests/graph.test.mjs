@@ -307,7 +307,7 @@ assert.throws(() => G.fileArgs({ hash: "--output=unexpected", parents: [] }), /i
 assert.throws(() => G.diffArgs({ hash: tip.hash, parents: ["--bad"] }, "file"), /identity/);
 console.log("untrusted history ok");
 rmSync(base, { recursive: true, force: true });
-// ---- Manygit: finding repositories under a folder, and one status call each
+// ---- Repository list: finding repositories under a folder, and one status call each
 {
   const ws = mkdtempSync(join(tmpdir(), "herdr-repos-"));
   const mk = (rel) => { const d = join(ws, rel); mkdirSync(d, { recursive: true }); sh(d, "init", "-q", "-b", "main"); return d; };
