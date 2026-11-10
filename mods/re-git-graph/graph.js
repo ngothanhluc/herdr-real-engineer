@@ -14,6 +14,9 @@ import { ALL, FIND_MAX, filterLogArgs, normalizeFilter, sameFilter, filterLabel 
 import { FindBar } from "./findbar.js";
 import { STORE, branchesHeight } from "./branches.js";
 import { depthOf, unsearched, findArgs, parseFound, REPO_STATUS, LATEST_TAG, FETCH, REMOTES, fetchable, parseRepoStatus, parseRemotes, webUrl, syncOf } from "./repos.js";
+import { buildView, resolveMode, charWidth, windowWidth, MODE_KEY, WRAP_KEY } from "./diff-view.js";
+import { diffList } from "./diff-render.js";
+import { openInFiles } from "./file-open.js";
 
 function location(folder) {
   if (folder) return { cwd: folder, on: null };
@@ -23,7 +26,7 @@ function location(folder) {
   return { cwd: pane?.cwd || f?.cwd || space?.folder, on };
 }
 
-const PAGE = 300, ROW = 24, LANE = 12, PAD = 6, DIFF_ROW = 20;
+const PAGE = 300, ROW = 24, LANE = 12, PAD = 6;
 // Herdr 0.1.12 zooms a list itself ("Lists in mods follow the zoom"): its row
 // heights and the lines painted in its rows are layout units there, where before
 // they were screen pixels. Asked once: the version doesn't change while running.
@@ -138,6 +141,10 @@ export class Graph {
     this.remotes = true; this.scroll = VirtualListScrollHandle.new(); this.wide = false; this.graphMax = 160; this.scale = null;
     this.watchToken = 0; this.seenChange = shared("re-git-graph.changed");
     this.cols = withDefaults(); this.drag = null;
+    // The details strip reads a diff the same way the review tab does: split at
+    // 900px, inline below, and alt+z for long lines.
+    this.diffLayout = ["auto", "split", "inline"].includes(shared(MODE_KEY)) ? shared(MODE_KEY) : "auto";
+    this.diffWrap = shared(WRAP_KEY) === true;
     this.seen = new Map(); this.commitDetails = new Map();
     // Fetch all: its progress for one Git Graph folder, and each repository's last failure.
     this.fetchAll = null; this.fetchErrors = new Map();
@@ -160,6 +167,13 @@ export class Graph {
   }
 
   key() { return JSON.stringify(location(this.folder)); }
+
+  // The panel can be on another tab when the focused folder changes, and a
+  // graph that isn't drawn reads nothing. The shell calls this before it
+  // renders, so the folder stays current behind every tab.
+  sync(cx) {
+    if (this.key() !== this.context) this.refresh(cx);
+  }
 
   reset() {
     Object.assign(this, folderState());
@@ -571,8 +585,17 @@ export class Graph {
     });
   }
 
+  // Only this file, and only after the dialog says what it throws away. A file
+  // Git never saw is untracked; one added to the index but never committed
+  // needs both the index and the worktree cleared.
+  discardFile(file, cx) {
+    const known = this.files.find((x) => x.path === file.path);
+    const fresh = Boolean(known?.untracked);
+    openDialog({ type: "discardFile", path: file.path, fresh, added: !fresh && file.status === "A" }, this.ctx);
+  }
+
   openDiff(commit, file, cx) {
-    this.diff = { path: file.path, rows: null, width: 300 };
+    this.diff = { path: file.path, rows: null, fresh: Boolean(file.untracked) };
     const hash = commit.hash;
     cx.spawn(async (cx) => {
       let rows;
@@ -588,7 +611,7 @@ export class Graph {
         }
       } catch (e) { rows = [{ kind: "", text: `Can't show this diff: ${e?.message ?? e}` }]; }
       if (this.selected === hash && this.diff?.path === file.path) {
-        this.diff = { path: file.path, rows, width: Math.max(300, ...rows.map((r) => r.text.length * 6.6 + 60)) };
+        this.diff = { path: file.path, rows, fresh: Boolean(file.untracked) };
       }
       cx.notify();
     });
@@ -817,24 +840,43 @@ export class Graph {
       .child(Scrollbar.vertical(this.listId).viewport_from_layout().absolute().inset_0());
   }
 
+  // The strip is 320px tall inside a narrow panel, so a side-by-side read needs
+  // a window. It fetches the same patch again and draws with diff-render.
+  openDiffWindow(cx) {
+    const commit = this.commits[this.index.get(this.selected)], diff = this.diff;
+    if (!commit || !diff) return;
+    const width = windowWidth(diff.rows ?? [], charWidth(settings().font_size));
+    openOverlay({ mod: "re-git-graph", kind: "dialog", key: "re-git-graph.diff", width, height: 0.72,
+      props: { role: "diff", root: this.root, cwd: this.cwd ?? this.root, on: this.on, path: diff.path,
+        source: commit.uncommitted ? "uncommitted" : "commit", fresh: Boolean(diff.fresh),
+        commit: { hash: commit.hash, parents: commit.parents, uncommitted: Boolean(commit.uncommitted) } } });
+  }
+
+  diffView(rows) {
+    return buildView({ rows, mode: resolveMode(this.diffLayout, this.width ?? 0),
+      width: this.width ?? 0, cw: charWidth(settings().font_size), wrap: this.diffWrap });
+  }
+
   detailsPane(t, mono) {
     const commit = this.commits[this.index.get(this.selected)], d = this.details;
     if (!commit) return div();
     const top = h_flex().h(32).flex_none().px(10).gap(6).items_center().border_b(1).border_color(t.border).text_size(11.5);
-    const close = div().id("graph-details-close").px(6).py(1).rounded(4).text_color(t.dim).cursor_pointer().hover((s) => s.bg(t.hover).text_color(t.foreground))
+    const close = div().id("graph-details-close").px(9).py(3).rounded(6).text_size(13).text_color(t.dim).cursor_pointer().hover((s) => s.bg(t.hover).text_color(t.foreground))
       .on_click((_e, cx) => { this.selected = null; this.details = null; this.diff = null; cx.notify(); }).child("×");
     if (this.diff) {
       const rows = this.diff.rows;
       return v_flex().flex_none().h(320).border_t(1).border_color(t.border)
         .child(top.child(div().id("graph-diff-back").px(6).py(1).rounded(4).text_color(t.muted).cursor_pointer().hover((s) => s.bg(t.hover).text_color(t.foreground))
             .on_click((_e, cx) => { this.diff = null; cx.notify(); }).child("← Files"))
-          .child(div().flex_1().min_w(0).truncate().font_family(mono).text_color(t.foreground).child(this.diff.path)).child(close))
+          .child(div().flex_1().min_w(0).truncate().font_family(mono).text_color(t.foreground).child(this.diff.path))
+          .child(div().id("graph-diff-window").px(6).py(1).rounded(6).border_1().border_color(t.border).text_size(10).text_color(t.muted)
+            .cursor_pointer().tooltip("Open in a window · side by side")
+            .hover((s) => s.bg(t.hover).text_color(t.foreground)).on_click((_e, cx) => this.openDiffWindow(cx)).child("WINDOW"))
+          .child(close))
         .child(div().flex_1().min_h(0).relative().font_family(mono).text_size(11)
           .when(!rows, (e) => e.child(div().p(12).text_color(t.dim).child("Loading diff…")))
-          .when(Boolean(rows), (e) => e.child(div().id(`${this.diffId}-x`).size_full().overflow_x_scrollbar()
-              .child(div().w_full().min_w(this.diff.width).h_full().child(v_virtual_list(this.diffId, rows.length, DIFF_ROW, (i) => String(i),
-                (range) => rows.slice(range.start, range.end).map((r) => this.diffRow(r, t))).size_full())))
-            .child(Scrollbar.vertical(this.diffId).viewport_from_layout().absolute().inset_0())));
+          .when(Boolean(rows), (e) => e.child(diffList({ view: this.diffView(rows), wrap: this.diffWrap,
+            width: this.width ?? 0, id: this.diffId, t, mono }))));
     }
     const title = commit.uncommitted ? "Uncommitted changes" : `Commit ${commit.hash.slice(0, 8)}`;
     const body = v_flex().id("graph-details").flex_1().min_h(0).overflow_y_scrollbar().px(14).py(10).gap(4);
@@ -867,16 +909,18 @@ export class Graph {
           .child(div().w(12).flex_none().text_size(11).text_color(sc).child(f.status))
           .child(h_flex().flex_1().min_w(0).child(div().text_color(t.dim).truncate().child(parts.length ? parts.join("/") + "/" : "")).child(div().min_w(0).truncate().child(name)))
           .when(f.add > 0, (e) => e.child(div().text_size(11).text_color(t.ansi2).child(`+${f.add}`)))
-          .when(f.del > 0, (e) => e.child(div().text_size(11).text_color(t.ansi1).child(`−${f.del}`)));
+          .when(f.del > 0, (e) => e.child(div().text_size(11).text_color(t.ansi1).child(`−${f.del}`)))
+          .when(commit.uncommitted, (e) => e.child(div().id(`gf-discard-${i}`).px(6).py(1).rounded(6).border_1().border_color(t.border)
+            .text_size(10).text_color(t.dim).cursor_pointer().tooltip("Discard changes to this file")
+            .hover((st) => st.bg(t.ansi1 + "33").text_color(t.foreground))
+            .on_click((_e, cx) => { cx.stop_propagation(); this.discardFile(f, cx); }).child("Discard"))
+            .child(div().id(`gf-open-${i}`).px(6).py(1).rounded(6).border_1().border_color(t.border).text_size(10)
+              .text_color(t.dim).cursor_pointer().tooltip(`Open ${f.path} in your editor`)
+              .hover((st) => st.bg(t.hover).text_color(t.foreground))
+              .on_click((_e, cx) => { cx.stop_propagation(); openInFiles({ root: this.root, base: this.cwd ?? this.root, path: f.path, key: "re-files.changed" }); })
+              .child("Open file")));
       }))
       .when(d.more > 0, (e) => e.child(div().text_size(11).text_color(t.dim).child(`and ${d.more} more`))));
-  }
-
-  diffRow({ kind, number, text }, t) {
-    if (kind === "@") return div().w_full().px(12).h(DIFF_ROW).flex_none().truncate().bg(t.raised).text_color(t.dim).child(text);
-    return h_flex().w_full().h(DIFF_ROW).flex_none().gap(10).when(kind === "+", (e) => e.bg(t.ansi2 + "18")).when(kind === "-", (e) => e.bg(t.ansi1 + "18"))
-      .child(div().w(34).flex_none().text_right().text_color(t.dim).child(number === undefined ? "" : String(number)))
-      .child(div().flex_1().min_w(0).truncate().child(text));
   }
 
   empty(t) {
@@ -916,6 +960,11 @@ export class Graph {
       .on_mouse_up("left", (_e, cx) => this.endDrag(cx))
       .on_hover((hovered, cx) => { if (!hovered) this.endDrag(cx); })
       .on_key_down((e, cx) => {
+        if (e.key === "z" && e.modifiers?.alt) {
+          this.diffWrap = !this.diffWrap; setShared(WRAP_KEY, this.diffWrap);
+          cx.stop_propagation(); cx.notify();
+          return;
+        }
         if (e.key !== "escape" || !(this.selected || this.opened)) return;
         // Esc closes the dropdown, a diff, then the details, then goes back to the Git Graph list.
         if (this.picking) this.picking = false; else if (this.diff) this.diff = null; else if (this.selected) { this.selected = null; this.details = null; } else this.back(cx);

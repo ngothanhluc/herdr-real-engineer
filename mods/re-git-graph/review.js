@@ -2,12 +2,15 @@
 // real GitHub Pull request through the gh CLI. Opened as a pane by a keybind;
 // it draws its own dialogs so focus and state never leave the pane.
 import { View, div } from "gpui-kit";
-import { v_flex, h_flex, TextView, Textarea, TextareaState, Scrollbar, v_virtual_list } from "gpui-base";
-import { spaces, panes, focused, exec, readTextFile, watchFolder, theme, settings, props } from "herdr";
-import { parseRows, parsePatch, syntheticAdd, pairRows } from "./review-diff.js";
+import { v_flex, h_flex, TextView, Textarea, TextareaState } from "gpui-base";
+import { spaces, panes, focused, exec, readTextFile, watchFolder, theme, settings, props, shared, setShared, openOverlay } from "herdr";
+import { parseRows, parsePatch, syntheticAdd } from "./review-diff.js";
+import { buildView, resolveMode, nextLayout, charWidth, windowWidth, MODE_KEY, WRAP_KEY } from "./diff-view.js";
+import { diffList, diffChip } from "./diff-render.js";
+import { openInFiles } from "./file-open.js";
 import { normalizePr, normalizeList, viewArgs, listArgs, diffArgs, reviewArgs, mergeArgs } from "./review-pr.js";
 
-const ROW = 20, MAX_FILES = 400;
+const MAX_FILES = 400;
 
 const mono = () => settings().font_family ?? "JetBrains Mono";
 const count = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
@@ -108,7 +111,11 @@ export default class Review extends View {
     // review view is idle until its tab comes to the front.
     this.embedded = Boolean(p.embedded);
     this.active = p.active !== false;
-    this.state = { tab: "changes", scope: "worktree", file: null, mode: "unified", dialog: null };
+    this.state = { tab: "changes", scope: "worktree", file: null, dialog: null };
+    // The panel is the surface: split at 900px, inline below, alt+z for long lines.
+    this.layout = ["auto", "split", "inline"].includes(shared(MODE_KEY)) ? shared(MODE_KEY) : "auto";
+    this.wrap = shared(WRAP_KEY) === true;
+    this.width = 0;
     this.changes = { status: "idle", files: [], error: null, truncated: false, hasHead: true, base: "HEAD" };
     this.pr = { status: "idle", data: null, error: null, picker: null, diff: null, branch: null, missing: false };
     this.diff = null;
@@ -561,6 +568,13 @@ export default class Review extends View {
       }
       return;
     }
+    if (event.key === "z" && event.modifiers?.alt) {
+      this.wrap = !this.wrap;
+      setShared(WRAP_KEY, this.wrap);
+      cx.stop_propagation();
+      cx.notify();
+      return;
+    }
     if (modified(event)) return;
     if (event.key === "escape") {
       if (this.state.file !== null) {
@@ -572,7 +586,8 @@ export default class Review extends View {
       return;
     }
     if (event.key === "s") {
-      this.state.mode = this.state.mode === "unified" ? "split" : "unified";
+      this.layout = nextLayout(this.layout);
+      setShared(MODE_KEY, this.layout);
       cx.stop_propagation();
       cx.notify();
       return;
@@ -599,6 +614,9 @@ export default class Review extends View {
       .when(!this.embedded, (e) => e.rounded(10).border_1().border_color(t.border))
       .text_color(t.foreground).text_size(13).track_focus(this.handle)
       .on_key_down((event, cx) => this.keyDown(event, cx))
+      .on_size_change((size, cx) => {
+        if (Math.abs(size.width - this.width) > 1) { this.width = size.width; cx.notify(); }
+      })
       .child(this.header(t))
       .when(this.state.tab === "changes", (el) => el.child(this.changesBody(t, m)))
       .when(this.state.tab === "pr", (el) => el.child(this.prBody(t, m, cx)))
@@ -700,7 +718,29 @@ export default class Review extends View {
       .when(add > 0, (el) => el.child(div().text_size(11).text_color(t.ansi2).child(`+${add}`)))
       .when(del > 0, (el) => el.child(div().text_size(11).text_color(t.ansi1).child(`−${del}`)))
       .when(this.reviewed.has(path), (el) => el.child(div().w(7).h(7).flex_none().rounded_full().bg(t.done)))
-      .child(div().text_size(10.5).text_color(t.dim).child("r reviewed · s split · esc back"));
+      .child(diffChip(this.id("mode"), this.layout === "auto" ? `AUTO · ${resolveMode(this.layout, this.width).toUpperCase()}` : this.layout.toUpperCase(),
+        resolveMode(this.layout, this.width) === "split", (_e, cx) => { this.layout = nextLayout(this.layout); setShared(MODE_KEY, this.layout); cx.notify(); }, t, 6))
+      .child(diffChip(this.id("wrap"), this.wrap ? "WRAP" : "NO WRAP", this.wrap, (_e, cx) => {
+        this.wrap = !this.wrap; setShared(WRAP_KEY, this.wrap); cx.notify();
+      }, t, 6))
+      .child(diffChip(this.id("window"), "WINDOW", false, (_e, cx) => this.openWindow(cx), t, 6))
+      .child(diffChip(this.id("open"), "OPEN FILE", false,
+        () => openInFiles({ root: this.root, base: this.root, path: this.state.file, key: "re-files.changed" }), t, 6))
+      .child(div().text_size(10.5).text_color(t.dim).child("r reviewed · esc back"));
+  }
+
+  // The pane is a few hundred pixels wide, so a side-by-side read needs a
+  // window. It fetches the same patch again; the props stay small.
+  openWindow(cx) {
+    const path = this.state.file, root = this.root;
+    if (!path || !root) return;
+    const pr = this.state.tab === "pr" ? this.pr.data?.number ?? null : null;
+    const entry = this.currentFiles().find((file) => file.path === path);
+    const width = windowWidth(this.diff?.rows ?? [], charWidth(settings().font_size));
+    openOverlay({ mod: "re-git-graph", kind: "dialog", key: "re-git-graph.diff", width, height: 0.72,
+      props: { role: "diff", root, cwd: root, on: this.on, path,
+        source: pr ? "pr" : this.state.scope === "branch" ? "branch" : "worktree",
+        pr, base: this.base, hasHead: this.changes.hasHead, fresh: Boolean(entry?.fresh) } });
   }
 
   diffBody(t, m) {
@@ -710,47 +750,9 @@ export default class Review extends View {
     if (diff.binary) return div().p(12).text_color(t.dim).child("Binary file · no diff");
     const rows = diff.rows ?? [];
     if (!rows.length) return div().p(12).text_color(t.dim).child("No changes.");
-    const split = this.state.mode === "split";
-    const lines = split ? pairRows(rows) : rows;
-    const width = this.diffWidth(rows, split);
-    return div().flex_1().min_h(0).relative().font_family(m).text_size(11)
-      .child(div().id(this.diffXId).size_full().overflow_x_scrollbar()
-        .child(div().w_full().min_w(width).h_full()
-          .child(v_virtual_list(this.diffId, lines.length, ROW, (i) => String(i), (range) => {
-            const out = [];
-            for (let i = range.start; i < range.end; i++) out.push(split ? this.splitRow(lines[i], t) : this.unifiedRow(lines[i], t));
-            return out;
-          }).size_full())))
-      .child(Scrollbar.vertical(this.diffId).viewport_from_layout().absolute().inset_0());
-  }
-
-  diffWidth(rows, split) {
-    let max = 0;
-    for (const row of rows) if (row.text.length > max) max = row.text.length;
-    const cell = 34 + Math.ceil(Math.min(max, 2000) * 7.2) + 24;
-    return Math.max(420, split ? cell * 2 + 24 : cell);
-  }
-
-  unifiedRow(row, t) {
-    if (row.kind === "@") return div().w_full().px(12).h(ROW).flex_none().truncate().bg(t.raised).text_color(t.dim).child(row.text);
-    const number = row.kind === "-" ? row.old : row.new;
-    return h_flex().w_full().h(ROW).flex_none().gap(10)
-      .when(row.kind === "+", (el) => el.bg(t.ansi2 + "18"))
-      .when(row.kind === "-", (el) => el.bg(t.ansi1 + "18"))
-      .child(div().w(34).flex_none().text_right().text_color(t.dim).child(number === null ? "" : String(number)))
-      .child(div().flex_1().min_w(0).truncate().child(row.text));
-  }
-
-  splitRow(pair, t) {
-    const hunk = pair.left?.kind === "@" ? pair.left : pair.right?.kind === "@" ? pair.right : null;
-    if (hunk) return div().w_full().px(12).h(ROW).flex_none().truncate().bg(t.raised).text_color(t.dim).child(hunk.text);
-    const cell = (row, side) => h_flex().flex_1().min_w(0).h(ROW).flex_none()
-      .when(row?.kind === "+", (el) => el.bg(t.ansi2 + "18"))
-      .when(row?.kind === "-", (el) => el.bg(t.ansi1 + "18"))
-      .child(div().w(34).flex_none().text_right().text_color(t.dim)
-        .child(row ? String((side === "left" ? row.old : row.new) ?? (side === "left" ? row.new : row.old) ?? "") : ""))
-      .child(div().flex_1().min_w(0).truncate().child(row?.text ?? ""));
-    return h_flex().w_full().h(ROW).flex_none().child(cell(pair.left, "left")).child(cell(pair.right, "right"));
+    const view = buildView({ rows, mode: resolveMode(this.layout, this.width), width: this.width,
+      cw: charWidth(settings().font_size), wrap: this.wrap });
+    return diffList({ view, wrap: this.wrap, width: this.width, id: this.diffId, t, mono: m });
   }
 
   // ---- pull request view

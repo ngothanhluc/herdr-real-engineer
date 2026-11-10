@@ -8,6 +8,7 @@ import { Branches } from "./branches.js";
 import { Confirm } from "./confirm.js";
 import { Shell } from "./shell.js";
 import Review from "./review.js";
+import DiffWindow from "./diff-window.js";
 
 // One mod, several roles: the Git Graph panel (a shell with the graph and the
 // review view as tabs), a review pane opened by a layout without a Git Graph
@@ -22,7 +23,7 @@ export default class GitGraph extends View {
       return;
     }
     const role = props()?.role;
-    this.part = role === "menu" ? new Menu() : role === "dialog" ? new Dialog() : role === "update" ? new Update() : role === "settings" ? new Settings() : role === "branches" ? new Branches() : role === "confirm" ? new Confirm() : new Shell();
+    this.part = role === "menu" ? new Menu() : role === "dialog" ? new Dialog() : role === "update" ? new Update() : role === "settings" ? new Settings() : role === "branches" ? new Branches() : role === "confirm" ? new Confirm() : role === "diff" ? new DiffWindow() : new Shell();
     this.part.init(cx);
   }
 

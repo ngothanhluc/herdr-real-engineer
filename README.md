@@ -110,7 +110,8 @@ branch filter, the find bar and the rename. See [Credits](#credits).
   shows `user.name` and `user.email` with the scope each comes from, and the
   pairs you have used before: pick one to write it to the repository's own
   config, or type a new pair. Every write asks first, in a confirm over the
-  window. The list keeps 12 and lives in `shared.json`, and
+  window, and a repository with no identity of its own is asked once when the
+  panel shows it. The list keeps 12 and lives in `shared.json`, and
   the tab only shows when the folder is one repository. See
   [docs/git-config.md](docs/git-config.md).
 - **Double-click a branch label** to check it out. A remote branch with no
@@ -122,9 +123,14 @@ branch filter, the find bar and the rename. See [Credits](#credits).
   - a tag: delete, push, copy name
   - a commit: add tag, create branch, checkout, cherry pick, revert, merge,
     rebase, reset (soft, mixed, hard), copy hash or subject
-  - uncommitted changes: commit, stash, reset
+  - uncommitted changes: commit, stash, reset, and on each file row **Discard**
+    (behind a confirm that names what is lost) and **Open file** (Herdr's Files
+    panel, on that file)
 - **Commit details.** Click a commit for its message, hash, parents, author,
-  date and changed files. Click a file for its diff.
+  date and changed files. Click a file for its diff in the pane, and **⤢** in
+  the diff header opens it in a window sized for two columns: side by side at
+  900 px or wider, inline below, `s` to cycle the three layouts, and `alt+z` to
+  wrap long lines instead of cutting them at the edge.
 - **Live.** It reloads when refs move, refreshes the uncommitted row as you
   edit, and fetches with one button. It loads 300 commits at first, and 300
   more each time you scroll to the end.
@@ -165,7 +171,7 @@ window in place instead of stacking a second one.
 
 ### Review: local changes and Pull request
 
-The Git panel has three tabs: **Git**, **Pull request** and **Config**. Local
+The Git panel has three tabs: **Git Graph**, **Pull request** and **Config**. Local
 changes are the graph's own top row, **Uncommitted changes**: selecting it
 lists the changed files with their added and deleted lines, and a file opens
 its diff. `cmd-shift-r` shows the panel on that row. A layout without a `graph`

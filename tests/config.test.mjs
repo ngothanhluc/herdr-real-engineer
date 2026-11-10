@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { parseIdentityZ, asPair, samePair, pairsOf, rememberPair, MAX_PAIRS } from "../mods/re-git-graph/config.js";
+import { parseIdentityZ, asPair, samePair, pairsOf, rememberPair, hasLocalIdentity, MAX_PAIRS } from "../mods/re-git-graph/config.js";
 
 // `git config --list -z --show-scope`: `scope\0key\nvalue\0` per setting.
 const records = [
@@ -16,6 +16,15 @@ assert.deepEqual(entries, {
   name: { value: "Ada Lovelace", scope: "local" },
   email: { value: "ada@example.com", scope: "global" },
 });
+// A repository is set up only when its own config holds both keys in full.
+assert.equal(hasLocalIdentity({ name: { value: "Ada", scope: "local" }, email: { value: "ada@example.com", scope: "local" } }), true);
+assert.equal(hasLocalIdentity({ name: { value: "Ada", scope: "worktree" }, email: { value: "ada@example.com", scope: "worktree" } }), true);
+assert.equal(hasLocalIdentity({ name: { value: "Ada", scope: "local" }, email: { value: "ada@example.com", scope: "global" } }), false);
+assert.equal(hasLocalIdentity({ name: { value: "Ada", scope: "global" }, email: { value: "ada@example.com", scope: "global" } }), false);
+assert.equal(hasLocalIdentity({ name: { value: "", scope: "local" }, email: { value: "ada@example.com", scope: "local" } }), false);
+assert.equal(hasLocalIdentity({}), false);
+assert.equal(hasLocalIdentity(undefined), false);
+
 assert.deepEqual(parseIdentityZ(""), {});
 assert.deepEqual(parseIdentityZ(undefined), {});
 

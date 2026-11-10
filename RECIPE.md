@@ -319,6 +319,13 @@ removed lines.
 - The saved pairs live in `shared("re-git-graph.identities")`, newest first,
   repaired and capped at 12 by `config.js`. The identity a repository already
   uses joins the list when the tab opens.
+- `askIdentity(cx)` in `shell.js` runs from the shell's render, guarded by a
+  `Set` of roots already asked: when the panel shows a repository whose own
+  config lacks `user.name` or `user.email` (`hasLocalIdentity` in `config.js`),
+  it reads the folder once and opens the same confirm with `mode: "setup"` and
+  the borrowed pair. The dialog lists the saved pairs (a click writes one),
+  prefills Name and Email with the borrowed pair, and `Later` leaves the
+  repository alone until the next session. A hidden panel asks nothing.
 - Only the identity is set. Every other setting stays `git config` or an
   editor. See `docs/git-config.md` for the read, the scopes and the limits.
 

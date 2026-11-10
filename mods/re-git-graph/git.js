@@ -256,6 +256,11 @@ export function dialogFor(action, ctx) {
     case "pull": return { title: "Pull", detail: `Fast-forward ${cur} to ${a.upstream}? A pull that can't fast-forward changes nothing.`, confirm: "Pull" };
     case "stash": return { title: "Stash uncommitted changes", inputs: [{ id: "message", label: "Message", value: "", optional: true }],
       checks: [{ id: "untracked", label: "Include untracked files", value: true }], confirm: "Stash" };
+    case "discardFile": return a.fresh
+      ? { title: "Delete untracked file", detail: `${a.path} isn't in Git yet, so deleting it can't be undone.`, confirm: "Delete", danger: true }
+      : a.added
+        ? { title: "Discard a new file", detail: `${a.path} was never committed. This removes it from the index and deletes it.`, confirm: "Discard", danger: true }
+        : { title: "Discard changes to this file", detail: `${a.path} goes back to the last commit, losing its staged and unstaged changes.`, confirm: "Discard", danger: true };
     case "resetUncommitted": return { title: "Reset uncommitted changes", detail: "Reset the working tree to HEAD.", confirm: "Reset",
       choice: { id: "mode", label: "Mode", value: "mixed", options: [
         { value: "mixed", label: "Mixed", detail: "Unstage everything, keep the changes" },
@@ -307,6 +312,7 @@ export function commandsFor(a, v = {}, ctx = {}) {
   if (a.type === "reset" && !["soft", "mixed", "hard"].includes(v.mode)) throw new Error("Invalid reset mode");
   if (a.type === "resetUncommitted" && !["mixed", "hard"].includes(v.mode)) throw new Error("Invalid reset mode");
   if (a.type === "commit" && !String(v.message ?? "").trim()) throw new Error("Empty commit message");
+  if (a.type === "discardFile" && (!String(a.path ?? "").trim() || String(a.path).includes("\0"))) throw new Error("No file to discard");
   const name = String(v.name ?? "").trim(), message = String(v.message ?? "").trim();
   switch (a.type) {
     case "checkout": return [["checkout", a.name]];
@@ -331,6 +337,15 @@ export function commandsFor(a, v = {}, ctx = {}) {
     case "pull": return [["pull", "--ff-only", "--quiet"]];
     case "stash": return [["stash", "push", ...(v.untracked ? ["--include-untracked"] : []), ...(message ? ["-m", message] : [])]];
     case "resetUncommitted": return [["reset", `--${v.mode}`, "HEAD"]];
+    // One path only, after "--", so a name can never become an option. A file
+    // that was never committed needs the index cleared before it goes, since
+    // "checkout HEAD" has nothing to restore it from.
+    case "discardFile": {
+      const path = String(a.path ?? "");
+      if (a.fresh) return [["clean", "-f", "--", path]];
+      if (a.added) return [["rm", "--cached", "-f", "--", path], ["clean", "-f", "--", path]];
+      return [["checkout", "HEAD", "--", path]];
+    }
     case "fetch": return [["fetch", "--all"]];
     default: throw new Error("Unknown Git action");
   }
@@ -359,6 +374,7 @@ export function doneText(a, v = {}) {
     case "pull": return `Pulled ${a.upstream}`;
     case "stash": return "Stashed uncommitted changes";
     case "resetUncommitted": return `Reset uncommitted changes (${v.mode})`;
+    case "discardFile": return a.fresh ? `Deleted ${a.path}` : `Discarded changes to ${a.path}`;
     case "fetch": return "Fetched";
     default: return "Done";
   }

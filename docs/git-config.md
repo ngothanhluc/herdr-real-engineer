@@ -20,6 +20,16 @@ The identity a repository already uses joins the saved pairs when the tab
 opens, so a project that inherits a global name can pin it locally in one
 click.
 
+## A repository with no identity
+
+Opening a repository whose own config has no `user.name` or `user.email` asks
+once, in a dialog over the window: it names the identity Git borrows from the
+wider config and its scope, lists the pairs used before, and offers Name and
+Email boxes already filled with the borrowed pair. **Set identity** writes the
+local config; **Later** or Esc leaves it, and the question returns next session,
+never twice in one. A repository with both keys set is never asked, and a
+hidden panel keeps quiet.
+
 ## What picking writes
 
 Clicking a pair, or typing a new one and pressing `Set`, asks first. A confirm

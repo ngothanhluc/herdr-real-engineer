@@ -20,7 +20,8 @@ changed. Changes made here:
   uncommitted row (`shell.js`, `review.js`).
 - A Config tab (`config.js`, `config-view.js`, `confirm.js`): sets the
   repository's `user.name` and `user.email` from a list of pairs used before,
-  after a confirm.
+  after a confirm, and asks once for a repository that has no identity of its
+  own.
 
 Bugs in those additions are this repository's; bugs in the rest belong
 upstream, and are worth an issue there.

@@ -5,9 +5,10 @@
 // tab comes to the front.
 import { div } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
-import { theme, shared } from "herdr";
+import { exec, layout, openOverlay, theme, shared } from "herdr";
 import { Graph } from "./graph.js";
 import { ConfigView } from "./config-view.js";
+import { hasLocalIdentity, parseIdentityZ } from "./config.js";
 import Review from "./review.js";
 
 // `re-tabs.review` (cmd-shift-r) asks for "changes", `re-tabs.config` for
@@ -16,12 +17,30 @@ import Review from "./review.js";
 const TAB_REQUEST = "re-git-graph.tab";
 const REQUEST_FRESH_MS = 10000;
 
-const TABS = [["graph", "Git"], ["pr", "Pull request"], ["config", "Config"]];
+const TABS = [["graph", "Git Graph"], ["pr", "Pull request"], ["config", "Config"]];
+
+// A layout node by id, for "is this panel in front?" without asking the window.
+function find(node, id) {
+  if (node?.id === id) return node;
+  for (const child of node?.children ?? []) {
+    const found = find(child, id);
+    if (found) return found;
+  }
+  return null;
+}
 
 export class Shell {
   init(cx) {
     this.tab = "graph";
     this.seenRequest = 0;
+    // Repositories already asked for an identity this session.
+    this.asked = new Set();
+    // The focused folder can change while another tab is in front, and Herdr
+    // sends no event for it. A string compare a second keeps the graph and the
+    // identity question current behind every tab.
+    cx.timer.every(1000, (cx) => {
+      if (this.graph.key() !== this.graph.context) { this.graph.sync(cx); cx.notify(); }
+    });
     this.closed = false;
     this.graph = new Graph();
     this.graph.init(cx);
@@ -78,6 +97,33 @@ export class Shell {
       .children(list.map(([id, label]) => this.tabButton(`re-git-graph-tab-${id}`, label, this.tab === id, (_e, cx) => this.show(id, cx), t)));
   }
 
+  // A repository with no identity of its own asks once a session, like VS Code's
+  // git-autoconfig: a commit there would borrow the global name and email,
+  // which is how a personal address ends up on a work repository. A hidden
+  // panel stays quiet and the question waits for the panel to be in front.
+  askIdentity(cx) {
+    if (find(layout(), "panel")?.hidden) return;
+    const root = this.graph.root, on = this.graph.on ?? null;
+    if (!root) return;
+    const key = `${on ?? ""}\0${root}`;
+    if (this.asked.has(key)) return;
+    this.asked.add(key);
+    cx.spawn(async (cx) => {
+      let result;
+      try {
+        result = await exec("git", ["--no-optional-locks", "config", "--list", "-z", "--show-scope"], { cwd: root, on });
+      } catch {
+        return;
+      }
+      if (this.closed || this.graph.root !== root || result.code !== 0) return;
+      const entries = parseIdentityZ(result.stdout);
+      if (hasLocalIdentity(entries)) return;
+      openOverlay({ mod: "re-git-graph", kind: "dialog", width: 420, height: 380,
+        props: { role: "confirm", mode: "setup", root, on,
+          inherited: { name: entries.name?.value ?? "", email: entries.email?.value ?? "", scope: entries.email?.scope ?? entries.name?.scope ?? null } } });
+    });
+  }
+
   // A shortcut set the request while another tab was in front (or before this
   // panel was mounted); ignore one that is no longer fresh. The switch runs
   // after this render, where focusing a handle is allowed.
@@ -106,6 +152,8 @@ export class Shell {
 
   render(cx) {
     this.takeRequest(cx);
+    this.graph.sync(cx);
+    this.askIdentity(cx);
     const t = theme(), list = this.tabsShown();
     // The folder left its repository while Config was in front: show the graph,
     // and take the keyboard there after this render.

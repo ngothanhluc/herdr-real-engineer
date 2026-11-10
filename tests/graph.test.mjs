@@ -224,6 +224,22 @@ assert.ok(has(["stash", "list"], "wip"));
 sh(repo, "stash", "pop", "-q");
 ok(run({ type: "resetUncommitted" }, { mode: "hard" }));
 assert.equal(git(repo, ["status", "--porcelain"]).stdout, "?? new.txt\n", "hard reset keeps untracked files");
+
+// Discard one file: tracked goes back to HEAD, untracked is deleted, and a
+// staged new file leaves both the index and the worktree.
+writeFileSync(join(repo, "three.txt"), "local edit");
+writeFileSync(join(repo, "keep.txt"), "seen");
+ok(run({ type: "discardFile", path: "three.txt" }));
+assert.equal(git(repo, ["status", "--porcelain"]).stdout, "?? keep.txt\n?? new.txt\n", "only the named file goes back");
+ok(run({ type: "discardFile", path: "keep.txt", fresh: true }));
+assert.equal(git(repo, ["status", "--porcelain"]).stdout, "?? new.txt\n", "an untracked file is deleted");
+writeFileSync(join(repo, "staged.txt"), "x");
+git(repo, ["add", "staged.txt"]);
+ok(run({ type: "discardFile", path: "staged.txt", added: true }));
+assert.equal(git(repo, ["status", "--porcelain"]).stdout, "?? new.txt\n", "a staged new file leaves nothing behind");
+assert.throws(() => G.commandsFor({ type: "discardFile", path: "" }), /No file to discard/);
+assert.match(G.dialogFor({ type: "discardFile", path: "a.txt", fresh: true }, ctxOf()).title, /untracked/);
+assert.match(G.dialogFor({ type: "discardFile", path: "a.txt" }, ctxOf()).detail, /a\.txt/);
 // Commit: staging everything (untracked too), or only what's staged.
 assert.deepEqual(labelsIn(G.menuFor({ kind: "uncommitted" }, ctxOf())), ["Commit…", "Stash uncommitted changes…", "Reset uncommitted changes…"]);
 assert.match(G.validate({ type: "commit" }, { message: "  ", all: true }, ctxOf()), /empty/);

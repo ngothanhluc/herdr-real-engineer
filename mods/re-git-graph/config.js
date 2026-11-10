@@ -8,6 +8,16 @@ export const IDENTITY_STAMP = "re-git-graph.identity";
 
 export const SCOPE_LABEL = { worktree: "Worktree", local: "Local", global: "Global", system: "System", command: "Command" };
 
+// A repository has an identity of its own when both keys come from its own
+// config, worktree config included. An inherited value does not count: it is
+// the accident the setup dialog is there to prevent.
+export function hasLocalIdentity(entries) {
+  return ["name", "email"].every((which) => {
+    const entry = entries?.[which];
+    return Boolean(entry?.value) && (entry.scope === "local" || entry.scope === "worktree");
+  });
+}
+
 // The most pairs kept; the least recently used fall off the end.
 export const MAX_PAIRS = 12;
 
