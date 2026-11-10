@@ -111,7 +111,12 @@ It has a branch filter, a find bar, a Pull request tab and a Config tab.
   full name.
 - **Uncommitted changes** sit on top as their own row, joined to HEAD by a
   dashed line. Selecting the row lists the changed files; a file opens its
-  diff. `cmd-shift-r` lands there.
+  diff, and its **Stage** or **Unstage** button moves it in or out of the
+  index. `cmd-shift-r` lands there.
+- **Actions above the graph.** While the worktree has changes, a row shows
+  **Stage all**, **Commit** and **Stash**. When the branch is behind its
+  upstream it adds **Pull**, and when ahead it adds **Push**. The buttons open
+  the same dialogs as the menus.
 - **Git config.** The **Config** tab is who this repository commits as. It
   shows `user.name` and `user.email` with the scope each comes from, and the
   pairs you have used before: pick one to write it to the repository's own
@@ -120,8 +125,10 @@ It has a branch filter, a find bar, a Pull request tab and a Config tab.
   panel shows it. The list keeps 12 and lives in `shared.json`, and
   the tab only shows when the folder is one repository. See
   [docs/git-config.md](docs/git-config.md).
-- **Double-click a branch label** to check it out. A remote branch with no
-  local one asks for the local name first.
+- **Double-click a branch label** to check it out. Double-click the remote part
+  of the current branch's label to pull its upstream, after a confirm. Another
+  remote branch still checks out, and one with no local branch asks for the
+  local name first.
 - **Right-click** what's under the pointer:
   - a branch: checkout, rename, delete, merge into the current branch, rebase
     onto it, push, copy name

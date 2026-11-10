@@ -140,6 +140,11 @@ bottom:
     (`All branches`, `Current`, one branch's short name, or `N branches`),
     and a chevron down.
   - a `Remotes` checkbox (13px box, `accent` filled with a check when on).
+- **Actions row**, 30px under the toolbar while the worktree has changes or the
+  branch is ahead, behind, or has a gone upstream: `Stage all`, `Commit`
+  (accent) and `Stash` while there are changes, `Pull ↓N` while behind, and
+  `Push ↑N` while ahead or when the upstream is gone. Below 360px the labels
+  become icons with tooltips. Each opens the same dialog as the menus.
 - **Branch filter popup**, 260px at the pointer on `popover`, 6px padding:
   a 30px `Filter branches` input, then 28px rows (at most 10 shown, then it
   scrolls): `All branches` and `Current` (medium weight; hidden while the
@@ -198,7 +203,8 @@ bottom:
   `ansi2`, `−d` `ansi1`. Clicking a file turns the area into its diff: a
   `← Files` back link and the path, then 20px monospace rows, hunk headers on
   `raised`, added lines on `ansi2` at 9%, removed on `ansi1` at 9%, line
-  numbers in a 34px `dim` column.
+  numbers in a 34px `dim` column. On the uncommitted row, each file row also
+  has **Stage** or **Unstage**, **Discard** and **Open file**.
 - **In place of the table**: centered, a 46px `raised` tile with a 22px icon,
   a 14px semibold title and a 12px `muted` line: `No folder`,
   `Not a git repository` (with the folder, `~`-shortened, and the search depth),
@@ -445,10 +451,11 @@ removed lines.
 - **Click** a commit: details open (again: they close). `Esc` closes a diff,
   then the details.
 - **Double-click** a label: a local branch other than the current one is
-  checked out (`git checkout <name>`); a remote branch whose local branch
-  exists checks that out; one without opens the Checkout remote branch dialog
-  (`git checkout -b <name> --track <remote/branch>`). Tags, HEAD and the rest
-  of the row do nothing on a double-click.
+  checked out (`git checkout <name>`); the current branch's remote part opens
+  the Pull confirm (`git pull --ff-only`); another remote branch whose local
+  branch exists checks that out; one without opens the Checkout remote branch
+  dialog (`git checkout -b <name> --track <remote/branch>`). Tags, HEAD and
+  the rest of the row do nothing on a double-click.
 - **Right-click**: on a local branch, its menu (Checkout, Rename, Delete,
   Merge into <current>, Rebase <current> on it, Push, Copy name; the first,
   third and merge/rebase are left out for the current branch); on a remote
@@ -456,8 +463,8 @@ removed lines.
   branch, Copy name); on a tag, Delete, Push, Copy name; anywhere else, the
   commit menu (Add tag, Create branch, Checkout, Cherry pick, Revert, Merge,
   Rebase, Reset, Copy hash, Copy subject; Checkout, Cherry pick, Merge and
-  Rebase left out on HEAD); on the uncommitted row: Commit, Stash, Reset
-  uncommitted changes. Push needs a remote.
+  Rebase left out on HEAD); on the uncommitted row: Stage all changes,
+  Commit, Stash, Reset uncommitted changes. Push needs a remote.
 - **Actions** run as argv, stopping at the first failure. With no dialog
   (checkout of a local branch, copy) the menu runs it, then
   closes. Otherwise a dialog asks: create branch, add tag (optional message
@@ -687,7 +694,8 @@ removed lines.
   there after a restart.
 - `cmd-f` in the graph opens the find bar; typing an author's name highlights
   their commits and shows `1/N`; Enter moves to the next and scrolls to it.
-- Double-clicking a local branch label checks it out with a toast; a remote
-  one without a local branch opens the dialog; a tag does nothing.
+- Double-clicking a local branch label checks it out with a toast; the current
+  branch's remote part opens the Pull confirm; another remote without a local
+  branch opens the dialog; a tag does nothing.
 - Focusing a terminal outside a repository shows `Not a git repository` with
   the folder and nothing left over from the last repository.

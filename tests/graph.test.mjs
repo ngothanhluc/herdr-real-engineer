@@ -71,6 +71,17 @@ assert.equal(G.hitLabel(labels, leftOf + 2, start, leftOf + 3).part.name, "main"
 // Long names are cut so the drawn width stays what was measured.
 const long = G.labelsOf({ refs: [{ kind: "branch", name: "a".repeat(60), head: false }] })[0];
 assert.equal(long.parts[0].text.length, G.LABEL.MAX);
+// The current branch's upstream track, read in one ref call.
+assert.deepEqual(G.parseTrackFor("main\0origin/main\0[ahead 2, behind 3]\n", "main"),
+  { upstream: "origin/main", ahead: 2, behind: 3, gone: false });
+assert.deepEqual(G.parseTrackFor("main\0\0\n", "main"), { upstream: null, ahead: 0, behind: 0, gone: false });
+assert.deepEqual(G.parseTrackFor("main\0origin/main\0[gone]\n", "main"), { upstream: "origin/main", ahead: 0, behind: 0, gone: true });
+// The current branch's own remote part pulls; every other remote label keeps checkout.
+assert.deepEqual(G.doubleClickAction({ kind: "remote", name: "origin/main" }, { current: "main", upstream: "origin/main" }),
+  { type: "pull", upstream: "origin/main" });
+assert.deepEqual(G.doubleClickAction({ kind: "remote", name: "origin/fix" }, { current: "main", upstream: "origin/main", branches: ["main"] }),
+  { type: "checkoutRemote", name: "origin/fix", remote: "origin", branch: "fix" });
+assert.deepEqual(G.doubleClickAction({ kind: "branch", name: "fix" }, { current: "main" }), { type: "checkout", name: "fix" });
 console.log("labels ok");
 
 // ---- uncommitted row and dashed lane
@@ -241,7 +252,12 @@ assert.throws(() => G.commandsFor({ type: "discardFile", path: "" }), /No file t
 assert.match(G.dialogFor({ type: "discardFile", path: "a.txt", fresh: true }, ctxOf()).title, /untracked/);
 assert.match(G.dialogFor({ type: "discardFile", path: "a.txt" }, ctxOf()).detail, /a\.txt/);
 // Commit: staging everything (untracked too), or only what's staged.
-assert.deepEqual(labelsIn(G.menuFor({ kind: "uncommitted" }, ctxOf())), ["Commit…", "Stash uncommitted changes…", "Reset uncommitted changes…"]);
+assert.deepEqual(labelsIn(G.menuFor({ kind: "uncommitted" }, ctxOf())), ["Stage all changes", "Commit…", "Stash uncommitted changes…", "Reset uncommitted changes…"]);
+assert.deepEqual(G.commandsFor({ type: "stageAll" }), [["add", "--all"]]);
+assert.deepEqual(G.commandsFor({ type: "stageFile", path: "--help" }), [["add", "--", "--help"]], "a path stays behind --");
+assert.deepEqual(G.commandsFor({ type: "unstageFile", path: "a.txt" }), [["reset", "HEAD", "--", "a.txt"]]);
+assert.equal(G.doneText({ type: "stageAll" }), "Staged every change");
+assert.throws(() => G.commandsFor({ type: "stageFile", path: "" }), /No file to stage/);
 assert.match(G.validate({ type: "commit" }, { message: "  ", all: true }, ctxOf()), /empty/);
 assert.throws(() => G.commandsFor({ type: "commit" }, { message: "" }), /Empty commit message/);
 writeFileSync(join(repo, "three.txt"), "committed"); writeFileSync(join(repo, "new.txt"), "new");
@@ -250,7 +266,8 @@ assert.equal(git(repo, ["log", "-1", "--format=%s"]).stdout.trim(), "--amend: a 
 assert.equal(git(repo, ["status", "--porcelain"]).stdout, "", "everything, untracked included, committed");
 writeFileSync(join(repo, "a.txt"), "a"); writeFileSync(join(repo, "b.txt"), "b"); sh(repo, "add", "a.txt");
 assert.deepEqual(G.parseStatus(git(repo, [...G.READ, ...G.STATUS]).stdout).map((f) => [f.path, f.staged]), [["a.txt", true], ["b.txt", false]]);
-assert.equal(G.initialValues(G.menuFor({ kind: "uncommitted", staged: true }, ctxOf())[0].action, ctxOf()).all, false, "something staged: commit just that by default");
+const commitItem = G.menuFor({ kind: "uncommitted", staged: true }, ctxOf()).find((i) => i.action?.type === "commit");
+assert.equal(G.initialValues(commitItem.action, ctxOf()).all, false, "something staged: commit just that by default");
 assert.equal(G.initialValues({ type: "commit", staged: false }, ctxOf()).all, true, "nothing staged: stage everything by default");
 ok(run({ type: "commit" }, { message: "only staged", all: false }));
 assert.equal(git(repo, ["show", "--name-only", "--format=", "HEAD"]).stdout, "a.txt\n", "without staging, only the index");

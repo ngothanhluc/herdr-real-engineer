@@ -55,6 +55,20 @@ export function parseLog(text) {
   return commits;
 }
 
+// The current branch's upstream and its ahead/behind counts, in one ref read.
+export const TRACK = ["for-each-ref", "--format=%(refname:short)%00%(upstream:short)%00%(upstream:track)", "refs/heads"];
+
+export function parseTrackFor(text, branch) {
+  for (const line of (text ?? "").split("\n")) {
+    const [name, upstream, track] = line.split("\0");
+    if (name !== branch) continue;
+    if (!upstream) return { upstream: null, ahead: 0, behind: 0, gone: false };
+    return { upstream, ahead: Number(/ahead (\d+)/.exec(track)?.[1] ?? 0),
+      behind: Number(/behind (\d+)/.exec(track)?.[1] ?? 0), gone: track === "[gone]" };
+  }
+  return { upstream: null, ahead: 0, behind: 0, gone: false };
+}
+
 // `git status --porcelain=v1 -z --no-renames`: one NUL-terminated "XY path" per file.
 export function parseStatus(text) {
   return text.split("\0").filter(Boolean).map((entry) => {
@@ -125,6 +139,19 @@ export function hitLabel(labels, x, start, limit = Infinity) {
   return null;
 }
 
+// What a double-click on a label does. The current branch's own remote part is
+// a pull, the only remote action that cannot switch branches. Every other
+// remote label keeps the checkout behavior.
+export function doubleClickAction(part, ctx) {
+  if (!part) return null;
+  if (part.kind === "branch") return part.name !== ctx.current ? { type: "checkout", name: part.name } : null;
+  if (part.kind !== "remote") return null;
+  if (ctx.upstream === part.name) return { type: "pull", upstream: ctx.upstream };
+  const slash = part.name.indexOf("/"), branch = part.name.slice(slash + 1), remote = part.name.slice(0, slash);
+  if (ctx.branches.includes(branch)) return branch !== ctx.current ? { type: "checkout", name: branch } : null;
+  return { type: "checkoutRemote", name: part.name, remote, branch };
+}
+
 const shortHash = (hash) => hash.slice(0, 8);
 const currentName = (ctx) => ctx.current ?? "HEAD";
 const section = (...items) => items.filter(Boolean);
@@ -138,6 +165,7 @@ export function menuFor(target, ctx) {
   let sections;
   if (target.kind === "uncommitted") {
     sections = [
+      section(item("Stage all changes", "plus", { type: "stageAll" })),
       section(item("Commit…", "commit", { type: "commit", staged: Boolean(target.staged) })),
       section(item("Stash uncommitted changes…", "stash", { type: "stash" })),
       section(item("Reset uncommitted changes…", "reset", { type: "resetUncommitted" })),
@@ -313,6 +341,7 @@ export function commandsFor(a, v = {}, ctx = {}) {
   if (a.type === "resetUncommitted" && !["mixed", "hard"].includes(v.mode)) throw new Error("Invalid reset mode");
   if (a.type === "commit" && !String(v.message ?? "").trim()) throw new Error("Empty commit message");
   if (a.type === "discardFile" && (!String(a.path ?? "").trim() || String(a.path).includes("\0"))) throw new Error("No file to discard");
+  if (["stageFile", "unstageFile"].includes(a.type) && (!String(a.path ?? "").trim() || String(a.path).includes("\0"))) throw new Error("No file to stage");
   const name = String(v.name ?? "").trim(), message = String(v.message ?? "").trim();
   switch (a.type) {
     case "checkout": return [["checkout", a.name]];
@@ -336,6 +365,9 @@ export function commandsFor(a, v = {}, ctx = {}) {
     // Fast-forward only, because a pull is fast-forward only: never a merge or a rebase.
     case "pull": return [["pull", "--ff-only", "--quiet"]];
     case "stash": return [["stash", "push", ...(v.untracked ? ["--include-untracked"] : []), ...(message ? ["-m", message] : [])]];
+    case "stageAll": return [["add", "--all"]];
+    case "stageFile": return [["add", "--", String(a.path)]];
+    case "unstageFile": return [["reset", "HEAD", "--", String(a.path)]];
     case "resetUncommitted": return [["reset", `--${v.mode}`, "HEAD"]];
     // One path only, after "--", so a name can never become an option. A file
     // that was never committed needs the index cleared before it goes, since
@@ -373,6 +405,9 @@ export function doneText(a, v = {}) {
     case "commit": return "Committed";
     case "pull": return `Pulled ${a.upstream}`;
     case "stash": return "Stashed uncommitted changes";
+    case "stageAll": return "Staged every change";
+    case "stageFile": return `Staged ${a.path}`;
+    case "unstageFile": return `Unstaged ${a.path}`;
     case "resetUncommitted": return `Reset uncommitted changes (${v.mode})`;
     case "discardFile": return a.fresh ? `Deleted ${a.path}` : `Discarded changes to ${a.path}`;
     case "fetch": return "Fetched";

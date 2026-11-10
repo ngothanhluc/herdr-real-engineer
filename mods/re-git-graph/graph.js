@@ -5,8 +5,8 @@ import { div, svg, PathBuilder } from "gpui-kit";
 import { v_flex, h_flex, Scrollbar, v_virtual_list, VirtualListScrollHandle } from "gpui-base";
 import { spaces, panes, focused, exec, watchFolder, readTextFile, theme, settings, props, shared, setShared, openOverlay, home, notify, knownAgents, updates, nextCommand } from "herdr";
 import { layoutLanes } from "./lanes.js";
-import { READ, STATUS, UNCOMMITTED, LABEL, parseLog, parseStatus, withUncommitted, labelsOf, hitLabel,
-  menuFor, menuHeight, fileArgs, joinFiles, diffArgs, diffRows } from "./git.js";
+import { READ, STATUS, TRACK, UNCOMMITTED, LABEL, parseLog, parseStatus, parseTrackFor, withUncommitted, labelsOf, hitLabel,
+  doubleClickAction, menuFor, menuHeight, fileArgs, joinFiles, diffArgs, diffRows } from "./git.js";
 import { perform, openDialog } from "./act.js";
 import { icon } from "./menu.js";
 import { available, check, openUpdate, newer } from "./update.js";
@@ -80,6 +80,7 @@ const folderState = () => ({
   workspace: null, statuses: new Map(), opened: null, skipped: false,
   base: [], commits: [], rows: [], lanes: 1, labels: new Map(), index: new Map(), hasMore: false, limit: PAGE, files: [], ctx: null,
   head: null, current: null, branches: [], remoteRefs: [], filter: ALL, remoteNames: [], signature: null, scope: null, moreAsked: null,
+  upstream: null, ahead: 0, behind: 0, gone: false,
   selected: null, details: null, diff: null,
 });
 
@@ -89,11 +90,11 @@ const folderState = () => ({
 // when the stored one differs, the log is read again with it.
 async function readFolder(cwd, on, { filter, remotes, limit }) {
   const git = (args) => exec("git", [...READ, ...args], { cwd, on });
-  let [top, log, head, current, branches, remoteNames, status] = await Promise.all([
+  let [top, log, head, current, branches, remoteNames, status, track] = await Promise.all([
     // One commit past the page says whether there are more.
     exec("git", ["rev-parse", "--show-toplevel"], { cwd, on }), git(filterLogArgs(filter, { remotes, limit: limit + 1 })),
     git(["rev-parse", "--verify", "-q", "HEAD"]), git(["symbolic-ref", "-q", "--short", "HEAD"]),
-    git(["for-each-ref", "--format=%(refname)", "refs/heads", "refs/remotes"]), git(["remote"]), git(STATUS)]);
+    git(["for-each-ref", "--format=%(refname)", "refs/heads", "refs/remotes"]), git(["remote"]), git(STATUS), git(TRACK)]);
   if (top.code !== 0) return { state: "norepo", cwd, on };
   const refs = branches.stdout.split("\n").filter(Boolean), root = top.stdout.trim();
   const found = { root, on, branches: refs.filter((r) => r.startsWith("refs/heads/")).map((r) => r.slice(11)),
@@ -108,7 +109,8 @@ async function readFolder(cwd, on, { filter, remotes, limit }) {
     head: head.code === 0 ? head.stdout.trim() : null, current: current.code === 0 ? current.stdout.trim() : null,
     remoteNames: remoteNames.stdout.split("\n").filter(Boolean),
     files: status.code === 0 ? parseStatus(status.stdout) : [],
-    signature: [log.stdout, head.stdout, current.stdout, branches.stdout, remoteNames.stdout].join("\0"), scope: scopeOf(wanted, remotes),
+    ...parseTrackFor(track.stdout, current.code === 0 ? current.stdout.trim() : null),
+    signature: [log.stdout, head.stdout, current.stdout, branches.stdout, remoteNames.stdout, track.stdout].join("\0"), scope: scopeOf(wanted, remotes),
   };
 }
 
@@ -385,7 +387,8 @@ export class Graph {
     this.commits = commits; this.rows = rows; this.lanes = width;
     this.labels = new Map(commits.map((c) => [c.hash, labelsOf(c, this.remotes)]));
     this.index = new Map(commits.map((c, i) => [c.hash, i]));
-    this.ctx = { root: this.root, on: this.on, current: this.current, head: this.head, branches: this.branches, remotes: this.remoteNames };
+    this.ctx = { root: this.root, on: this.on, current: this.current, head: this.head, branches: this.branches, remotes: this.remoteNames,
+      upstream: this.upstream, ahead: this.ahead, behind: this.behind, gone: this.gone };
     this.state = commits.length ? "ready" : "empty"; this.error = null;
     this.find?.update();
     if (this.selected && !this.index.has(this.selected)) { this.selected = null; this.details = null; this.diff = null; }
@@ -519,14 +522,19 @@ export class Graph {
   }
 
   checkout(part, cx) {
-    const ctx = this.ctx;
-    if (part.kind === "branch" && part.name !== ctx.current) cx.spawn(async () => { await perform({ type: "checkout", name: part.name }, {}, ctx); });
-    else if (part.kind === "remote") {
-      const branch = part.name.slice(part.name.indexOf("/") + 1);
-      if (ctx.branches.includes(branch)) { if (branch !== ctx.current) cx.spawn(async () => { await perform({ type: "checkout", name: branch }, {}, ctx); }); }
-      else openDialog({ type: "checkoutRemote", name: part.name, remote: part.name.slice(0, part.name.indexOf("/")), branch }, ctx);
-    }
+    const action = doubleClickAction(part, this.ctx);
+    if (!action) return;
+    if (action.type === "pull" || action.type === "checkoutRemote") { openDialog(action, this.ctx); return; }
+    cx.spawn(async () => { await perform(action, {}, this.ctx); });
   }
+
+  pull(cx) { if (this.upstream) openDialog({ type: "pull", upstream: this.upstream }, this.ctx); }
+  push(cx) { if (this.current) openDialog({ type: "push", name: this.current }, this.ctx); }
+  commit(cx) { openDialog({ type: "commit", staged: this.files.some((f) => f.staged) }, this.ctx); }
+  stash(cx) { openDialog({ type: "stash" }, this.ctx); }
+  stageAll(cx) { cx.spawn(async () => { await perform({ type: "stageAll" }, {}, this.ctx); }); }
+  stageFile(file, cx) { cx.spawn(async () => { await perform({ type: "stageFile", path: file.path }, {}, this.ctx); }); }
+  unstageFile(file, cx) { cx.spawn(async () => { await perform({ type: "unstageFile", path: file.path }, {}, this.ctx); }); }
 
   contextMenu(key, e, cx) {
     const commit = this.commits[this.index.get(key)];
@@ -789,6 +797,31 @@ export class Graph {
   }
 
 
+  hasActions() {
+    return this.files.length > 0 || this.behind > 0 || this.ahead > 0 || this.gone
+      || (Boolean(this.current) && !this.upstream && this.remoteNames.length > 0);
+  }
+
+  actions(t) {
+    const changes = this.files.length, behind = this.behind ?? 0, ahead = this.ahead ?? 0;
+    const compact = (this.width ?? 0) < 360;
+    const button = (id, label, glyph, tip, action, accent = false) => h_flex().id(id).h(22).px(compact ? 6 : 7).gap(4)
+      .flex_none().items_center().rounded(5).border_1().border_color(t.border)
+      .bg(accent ? t.accent + "26" : t.raised).text_color(accent ? t.accent : t.muted)
+      .text_size(10.5).cursor_pointer().tooltip(tip)
+      .hover((s) => s.bg(t.hover).text_color(t.foreground)).on_click(action)
+      .when(compact, (e) => e.child(svg(icon(glyph)).size(12).flex_none()))
+      .when(!compact, (e) => e.child(label));
+    return h_flex().h(30).flex_none().px(10).gap(6).items_center().border_b(1).border_color(t.border)
+      .when(changes > 0, (e) => e
+        .child(button("graph-stage-all", "Stage all", "plus", "Stage every change, untracked too", (_e, cx) => this.stageAll(cx)))
+        .child(button("graph-commit", "Commit", "commit", "Commit the staged changes", (_e, cx) => this.commit(cx), true))
+        .child(button("graph-stash", "Stash", "stash", "Stash the uncommitted changes", (_e, cx) => this.stash(cx))))
+      .when(behind > 0, (e) => e.child(button("graph-pull", `Pull ↓${behind}`, "fetch", `Fast-forward to ${this.upstream}`, (_e, cx) => this.pull(cx), true)))
+      .when(ahead > 0 || this.gone || (Boolean(this.current) && !this.upstream && this.remoteNames.length > 0), (e) => e
+        .child(button("graph-push", ahead > 0 ? `Push ↑${ahead}` : "Push", "push", "Push this branch", (_e, cx) => this.push(cx))));
+  }
+
   toolbar(t) {
     return h_flex().h(34).flex_none().px(10).gap(8).items_center().border_b(1).border_color(t.border)
       .child(h_flex().id("graph-branches").h(24).max_w(220).pl(7).pr(5).gap(5).min_w(0).items_center().rounded(6).cursor_pointer().text_size(11.5)
@@ -910,15 +943,23 @@ export class Graph {
           .child(h_flex().flex_1().min_w(0).child(div().text_color(t.dim).truncate().child(parts.length ? parts.join("/") + "/" : "")).child(div().min_w(0).truncate().child(name)))
           .when(f.add > 0, (e) => e.child(div().text_size(11).text_color(t.ansi2).child(`+${f.add}`)))
           .when(f.del > 0, (e) => e.child(div().text_size(11).text_color(t.ansi1).child(`−${f.del}`)))
-          .when(commit.uncommitted, (e) => e.child(div().id(`gf-discard-${i}`).px(6).py(1).rounded(6).border_1().border_color(t.border)
-            .text_size(10).text_color(t.dim).cursor_pointer().tooltip("Discard changes to this file")
-            .hover((st) => st.bg(t.ansi1 + "33").text_color(t.foreground))
-            .on_click((_e, cx) => { cx.stop_propagation(); this.discardFile(f, cx); }).child("Discard"))
-            .child(div().id(`gf-open-${i}`).px(6).py(1).rounded(6).border_1().border_color(t.border).text_size(10)
-              .text_color(t.dim).cursor_pointer().tooltip(`Open ${f.path} in your editor`)
+          .when(commit.uncommitted, (e) => {
+            const known = this.files.find((x) => x.path === f.path);
+            return e.child(div().id(`gf-stage-${i}`).px(6).py(1).rounded(6).border_1().border_color(t.border)
+              .text_size(10).text_color(t.dim).cursor_pointer().tooltip(known?.staged ? "Unstage this file, keep the change" : "Stage this file")
               .hover((st) => st.bg(t.hover).text_color(t.foreground))
-              .on_click((_e, cx) => { cx.stop_propagation(); openInFiles({ root: this.root, base: this.cwd ?? this.root, path: f.path, key: "re-files.changed" }); })
-              .child("Open file")));
+              .on_click((_e, cx) => { cx.stop_propagation(); known?.staged ? this.unstageFile(f, cx) : this.stageFile(f, cx); })
+              .child(known?.staged ? "Unstage" : "Stage"))
+              .child(div().id(`gf-discard-${i}`).px(6).py(1).rounded(6).border_1().border_color(t.border)
+                .text_size(10).text_color(t.dim).cursor_pointer().tooltip("Discard changes to this file")
+                .hover((st) => st.bg(t.ansi1 + "33").text_color(t.foreground))
+                .on_click((_e, cx) => { cx.stop_propagation(); this.discardFile(f, cx); }).child("Discard"))
+              .child(div().id(`gf-open-${i}`).px(6).py(1).rounded(6).border_1().border_color(t.border).text_size(10)
+                .text_color(t.dim).cursor_pointer().tooltip(`Open ${f.path} in your editor`)
+                .hover((st) => st.bg(t.hover).text_color(t.foreground))
+                .on_click((_e, cx) => { cx.stop_propagation(); openInFiles({ root: this.root, base: this.cwd ?? this.root, path: f.path, key: "re-files.changed" }); })
+                .child("Open file"));
+          });
       }))
       .when(d.more > 0, (e) => e.child(div().text_size(11).text_color(t.dim).child(`and ${d.more} more`))));
   }
@@ -978,7 +1019,9 @@ export class Graph {
       .child(this.header(t))
       .when(this.state === "workspace", (e) => e.child(this.workspaceList(t)))
       .when(Boolean(this.picking && this.workspace && this.opened), (e) => e.child(this.picker(t)))
-      .when(ready, (e) => e.child(this.toolbar(t)).when(Boolean(this.find), (el) => el.child(this.find.render(t, (cx) => this.closeFind(cx)))).child(this.columns(t, this.graphWidth())).child(this.list(t, mono))
+      .when(ready, (e) => e.child(this.toolbar(t))
+        .when(this.hasActions(), (el) => el.child(this.actions(t)))
+        .when(Boolean(this.find), (el) => el.child(this.find.render(t, (cx) => this.closeFind(cx)))).child(this.columns(t, this.graphWidth())).child(this.list(t, mono))
         .when(Boolean(this.selected), (el) => el.child(this.detailsPane(t, mono))))
       .when(!ready && this.state !== "workspace", (e) => e.child(this.empty(t)));
   }
