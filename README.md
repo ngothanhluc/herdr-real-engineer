@@ -107,7 +107,8 @@ It has a branch filter, a find bar, a Pull request tab and a Config tab.
   header shows the branch, and HEAD is a ring on a tinted row.
 - **Labels.** Local branches carry their remote (`main | origin`). Remote-only
   branches and tags have their own. A toolbar checkbox shows or hides remote
-  branches.
+  branches. A label too long for its chip is cut with `…`; hover it for the
+  full name.
 - **Uncommitted changes** sit on top as their own row, joined to HEAD by a
   dashed line. Selecting the row lists the changed files; a file opens its
   diff. `cmd-shift-r` lands there.

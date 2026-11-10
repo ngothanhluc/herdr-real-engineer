@@ -172,8 +172,8 @@ bottom:
     tag (tag icon) in `ansi3`; a detached `HEAD` filled `accent`. The
     checked-out branch is filled with its lane color, text in `background`,
     semibold, with a check icon instead of the branch icon, and comes first.
-    Names longer than 22 characters are cut with `…`. Labels and description
-    clip together so the date columns never move.
+    Names longer than 22 characters are cut with `…`; hover a part for its full
+    name. Labels and description clip together so the date columns never move.
   - The description in `foreground`; merge commits `dim`; HEAD's semibold.
   - Date as `now`, `12m`, `3h`, `6d`, `Oct 3`, `Mar 2025`, in `dim`. Author in
     `muted`; the hash's first 8 characters in monospace 11px `dim`.
