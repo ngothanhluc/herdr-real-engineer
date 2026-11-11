@@ -3,13 +3,13 @@ diff -ruN a/main.js b/main.js
 +++ b/main.js
 @@ -1,6 +1,6 @@
  import { View, div, svg, image } from "gpui-kit";
- import { h_flex } from "gpui-base";
+ import { h_flex, ScrollHandle } from "gpui-base";
 -import { spaces, panes, run, openOverlay, theme, window, shared, layout, settings } from "herdr";
 +import { spaces, panes, focused, run, openOverlay, theme, window, shared, setShared, layout, settings, nextCommand } from "herdr";
  
  function find(node, id) {
    if (node?.id === id) return node;
-@@ -11,10 +11,50 @@
+@@ -11,11 +11,51 @@
    return null;
  }
  
@@ -55,13 +55,14 @@ diff -ruN a/main.js b/main.js
 -  init() {
 +  init(_props, cx) {
      this.pressed = null;
+     this.scroll = ScrollHandle.new();
      this.panels = JSON.parse(localStorage.getItem("panels") ?? "{}");
 +    // keys.json: "re-tabs.files" / "re-tabs.graph" toggle that panel, "re-tabs.review" opens the uncommitted row, "re-tabs.config" the Config tab.
 +    cx.spawn(async (cx) => { for (;;) { const c = await nextCommand(); if (c === "review") openReview(cx); else if (c === "config") openPanel("config"); else if (find(layout(), c)) togglePanel(c); } });
    }
  
    // The side panel is remembered per space: switching shows that space's choice
-@@ -77,17 +117,17 @@
+@@ -87,17 +127,17 @@
        ? Math.max(10, (root.traffic_lights[0] + 64) / settings().zoom - (sidebar?.hidden ? 0 : sidebar?.size?.px ?? 0))
        : 10;
      const panel = find(root, "panel"), body = find(root, "panel-body");
@@ -84,8 +85,8 @@ diff -ruN a/main.js b/main.js
      };
      return h_flex().size_full().min_w(0).px(10).pl(lightsPadding).gap(3).items_center().bg(t.chrome).border_b(1).border_color(t.border)
        .on_mouse_up("left", () => { this.pressed = null; })
-@@ -95,9 +135,9 @@
-       .child(h_flex().id("tab-scroll").flex_1().min_w(0).h_full().items_center().gap(3).overflow_x_scrollbar().children(shown.map(item)))
+@@ -107,9 +147,9 @@
+         .children(shown.map(item)))
        .child(button("tab-new", "+", () => openOverlay({ mod: "new-menu", kind: "popup", width: 250, height: 512 })))
        .when(enabled.includes("files"), el => el.child(panelButton("files", "Files", "mods/files/file.svg")))
 -      .when(enabled.includes("changes"), el => el.child(panelButton("changes", "Changes", "mods/changes/changes.svg")))
@@ -108,6 +109,6 @@ diff -ruN a/mod.json b/mod.json
 +  "title": "Tabs",
 +  "cloned_from": {
 +    "name": "tabs",
-+    "version": "0.1.14"
++    "version": "0.1.15"
 +  }
 +}

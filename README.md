@@ -46,7 +46,7 @@ small by keeping local changes as a patch over the shipped file. See
 
 ![The panel switching between Files and the graph](demo.gif)
 
-Everything else is Herdr's tab bar as of 0.1.14.
+Everything else is Herdr's tab bar as of 0.1.15.
 
 ### re-files: a file manager in the Files panel
 
@@ -300,7 +300,7 @@ so new default shortcuts in later Herdr releases must be added by hand.
 
 ## Limits
 
-- Tested on Herdr app 0.1.14 on macOS. Linux and Windows aren't tested.
+- Tested on Herdr app 0.1.15 on macOS. Linux and Windows aren't tested.
 - `re-tabs` and `re-files` start from shipped Herdr mods. After a Herdr update,
   run `node tools/sync.mjs --check`; see [MAINTAINING.md](MAINTAINING.md).
 - The preview edits only files on this computer, up to 1 MiB.

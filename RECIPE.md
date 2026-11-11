@@ -670,7 +670,7 @@ removed lines.
   layout.
 - Herdr's `exec` stops a command after 30 s: a slow fetch, pull, push or
   pre-commit hook fails there.
-- Tested on Herdr app 0.1.14 on macOS. Untested: Linux, Windows. The repository
+- Tested on Herdr app 0.1.15 on macOS. Untested: Linux, Windows. The repository
   list needs `find` and `env`, so not Windows.
 
 ## Done when
