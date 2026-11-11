@@ -19,7 +19,13 @@ const PS = "/bin/ps";
 
 const mac = () => (window()?.platform ?? "macos") === "macos";
 
-const mode = () => (MODES.includes(shared("re-awake")?.mode) ? shared("re-awake").mode : "off");
+// One setting for the machine, not one per layout: both Awake mods read and
+// write "awake", and either can drive the same launchctl job. The old per-mod
+// keys are read once so an existing choice carries over.
+const mode = () => {
+  const saved = shared("awake") ?? shared("re-awake") ?? shared("fg-awake");
+  return MODES.includes(saved?.mode) ? saved.mode : "off";
+};
 
 // The pid the assertion is tied to: caffeinate -w exits when it does, so quitting
 // Herdr can't leave the Mac awake. pgrep can't see the app from a mod; ps can.
@@ -81,7 +87,7 @@ export default class Awake extends View {
 
   setMode(mode) {
     this.mode = mode;
-    setShared("re-awake", { mode });
+    setShared("awake", { mode });
     this.sync();
     this.cx.notify();
   }

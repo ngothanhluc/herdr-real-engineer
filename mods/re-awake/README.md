@@ -18,8 +18,11 @@ macOS only, through tools that ship with it:
 `caffeinate -i -s` stops idle and system sleep on AC power. It doesn't stop
 display sleep and it can't hold the Mac awake through a closed lid.
 
-State lives in `shared("re-awake")` as `{ mode: "on" | "auto" | "off" }`.
-`cmd-shift-a` cycles it (`mods/re-awake` key `re-awake.cycle`).
+State lives in `shared("awake")` as `{ mode: "on" | "auto" | "off" }`, so the
+Forager layout's `fg-awake` shows and drives the same setting. Both mods use
+the one `herdr-awake` launchctl job; reading an older `re-awake` or `fg-awake`
+key happens once, as a migration. `cmd-shift-a` cycles it (`mods/re-awake` key
+`re-awake.cycle`).
 
 `herdr-app check mods/re-awake` loads it; `launchctl list herdr-awake` and
 `pmset -g assertions` show what it really did.
