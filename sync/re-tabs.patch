@@ -9,7 +9,7 @@ diff -ruN a/main.js b/main.js
  
  function find(node, id) {
    if (node?.id === id) return node;
-@@ -11,11 +11,51 @@
+@@ -11,6 +11,44 @@
    return null;
  }
  
@@ -51,18 +51,26 @@ diff -ruN a/main.js b/main.js
 +  });
 +}
 +
+ // Same as the agents mod: drops a status glyph, keeps a leading bracket or quote.
+ const clean = (s) => (s ?? "").replace(/^[^\p{L}\p{N}\p{Ps}\p{Pi}]+/u, "").replace(/^\[ [!.] \] /, "").trim();
+ 
+@@ -28,12 +66,14 @@
+ }
+ 
  export default class Tabs extends View {
 -  init() {
 +  init(_props, cx) {
      this.pressed = null;
      this.scroll = ScrollHandle.new();
-     this.panels = JSON.parse(localStorage.getItem("panels") ?? "{}");
+     try { this.panels = JSON.parse(localStorage.getItem("panels") ?? "{}"); } catch { this.panels = {}; }
+     if (!this.panels || typeof this.panels !== "object" || Array.isArray(this.panels)) this.panels = {};
+     this.swipe = { acc: 0, steps: 0, at: 0, last: 0 };
 +    // keys.json: "re-tabs.files" / "re-tabs.graph" toggle that panel, "re-tabs.review" opens the uncommitted row, "re-tabs.config" the Config tab.
 +    cx.spawn(async (cx) => { for (;;) { const c = await nextCommand(); if (c === "review") openReview(cx); else if (c === "config") openPanel("config"); else if (find(layout(), c)) togglePanel(c); } });
    }
  
-   // The side panel is remembered per space: switching shows that space's choice
-@@ -87,17 +127,17 @@
+   // One tab per wheel notch. A touchpad or smooth-scrolling mouse sends many
+@@ -129,17 +169,17 @@
        ? Math.max(10, (root.traffic_lights[0] + 64) / settings().zoom - (sidebar?.hidden ? 0 : sidebar?.size?.px ?? 0))
        : 10;
      const panel = find(root, "panel"), body = find(root, "panel-body");
@@ -85,7 +93,7 @@ diff -ruN a/main.js b/main.js
      };
      return h_flex().size_full().min_w(0).px(10).pl(lightsPadding).gap(3).items_center().bg(t.chrome).border_b(1).border_color(t.border)
        .on_mouse_up("left", () => { this.pressed = null; })
-@@ -107,9 +147,9 @@
+@@ -149,9 +189,9 @@
          .children(shown.map(item)))
        .child(button("tab-new", "+", () => openOverlay({ mod: "new-menu", kind: "popup", width: 250, height: 512 })))
        .when(enabled.includes("files"), el => el.child(panelButton("files", "Files", "mods/files/file.svg")))
@@ -109,6 +117,6 @@ diff -ruN a/mod.json b/mod.json
 +  "title": "Tabs",
 +  "cloned_from": {
 +    "name": "tabs",
-+    "version": "0.1.15"
++    "version": "0.1.16"
 +  }
 +}
