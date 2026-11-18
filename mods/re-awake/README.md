@@ -12,8 +12,10 @@ macOS only, through tools that ship with it:
 - `launchctl remove herdr-awake` stops it.
 - The pid comes from `ps -A -o pid=,comm=`, because `pgrep` can't see the app
   from inside a mod.
-- "Working" is Herdr's own `agents()` status, counted for spaces on this
-  computer only (`space.machine === null`).
+- "Working" is Herdr's own status: `agents()` in spaces on this computer
+  (`space.machine === null`), plus `terminals()` on this computer (a bare
+  address). The second catches sub-agents started with `hc run`, which have
+  no pane and keep working while their parent sits idle.
 
 `caffeinate -i -s` stops idle and system sleep on AC power. It doesn't stop
 display sleep and it can't hold the Mac awake through a closed lid.

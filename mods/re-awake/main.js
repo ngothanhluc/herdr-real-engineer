@@ -2,7 +2,7 @@
 // computer is working, Off never. macOS only. See README.md.
 import { View, div, svg } from "gpui-kit";
 import { h_flex } from "gpui-base";
-import { agents, spaces, theme, window, exec, shared, setShared, nextCommand } from "herdr";
+import { agents, spaces, terminals, checking, theme, window, exec, shared, setShared, nextCommand } from "herdr";
 
 const MODES = ["on", "auto", "off"];
 const LABEL = { on: "On", auto: "Agent", off: "Off" };
@@ -59,12 +59,17 @@ async function stop() {
   await exec(LAUNCHCTL, ["remove", JOB]);
 }
 
+// agents() only lists terminals in a pane. A sub-agent an agent started with
+// `hc run` (Claude Code running opencode) has no pane, and its parent can sit
+// idle while it works, so terminals() (every core terminal) counts it too.
+// This computer's addresses are bare; another machine's are "machine/t12".
 function workingHere() {
   const local = new Map(spaces().map((s) => [s.id, s.machine]));
-  return agents().filter((a) => a.status === "working" && local.get(a.space) === null).length;
+  return agents().some((a) => a.status === "working" && local.get(a.space) === null)
+    || terminals().some((t) => t.status === "working" && !String(t.address ?? "").includes("/"));
 }
 
-const want = (m) => m === "on" || (m === "auto" && workingHere() > 0);
+const want = (m) => m === "on" || (m === "auto" && workingHere());
 
 export default class Awake extends View {
   init(_props, cx) {
@@ -95,7 +100,8 @@ export default class Awake extends View {
   // Ask for what the mode wants and report what is really running, so the pill
   // never claims the Mac is held awake when it isn't.
   async sync() {
-    if (this.busy || !mac()) return;
+    // `herdr-app check` runs exec for real; never start or stop the job there.
+    if (this.busy || !mac() || checking()) return;
     this.busy = true;
     try {
       if (want(this.mode) !== (await running())) {
